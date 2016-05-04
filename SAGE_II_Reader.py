@@ -4,7 +4,6 @@ from struct import unpack
 from collections import OrderedDict
 from astropy.time import Time
 import copy
-import time
 
 class SAGEIILoaderV700(object):
     """
@@ -21,7 +20,8 @@ class SAGEIILoaderV700(object):
     In addition to the sage ii fields reported in the files, two additional time fields are provided
     to allow for easier subsetting of the data.
 
-    data['mjd'] is a np array containing the modified julian dates of each scan
+    data['mjd'] is a numpy array containing the modified julian dates of each scan
+    date['time'] is an astropy.time object containing the times of each scan
     """
     def __init__(self):
 
@@ -276,11 +276,19 @@ class SAGEIILoaderV700(object):
 
         :param min_date: (str)
         start date where data will be loaded in iso format, eg: '2004-1-1'
-        :param max_date:
+        :param max_date: (str)
         end date where data will be loaded in iso format, eg: '2004-1-1'
+        :param min_lat: (optional, float)
+        minimum latitude
+        :param max_lat: (optional, float)
+        maximum latitude
+        :param min_lon: (optional, float)
+        minimum longitude
+        :param max_lon: (optional, float)
+        maximum longitude
         :return:
         data (dict)
-        Most variables are return as numpy arrays (1 or 2 dimensional depending on the variable)
+        Variables are returned as numpy arrays (1 or 2 dimensional depending on the variable)
         """
         min_time = Time(min_date,format='iso')
         max_time = Time(max_date,format='iso')
@@ -303,6 +311,7 @@ class SAGEIILoaderV700(object):
                     for sp in spec_data:
                         sp['ProfileInfVec'] = copy.copy(sp['InfVec'])
                         del sp['InfVec']
+
                     #get rid of extraneous profiles in the index so index and spec are the same lengths
                     for key in indx_data.keys():
                         if hasattr(indx_data[key], '__len__'):
@@ -311,10 +320,8 @@ class SAGEIILoaderV700(object):
                             #add the index values to the data set
                             if key in data.keys():
                                 data[key] = np.append(data[key],indx_data[key])
-                                data[key][data[key] == -999] = self.fill_value
                             else:
                                 data[key] = indx_data[key]
-                                data[key][data[key] == -999] = self.fill_value
 
                     #initialize the data dictionaries as lists
                     if init is False:
@@ -331,17 +338,34 @@ class SAGEIILoaderV700(object):
         for key in data.keys():
             if len(data[key][0].shape) > 0:
                 data[key] = np.concatenate(data[key],axis=0)
-                data[key][data[key] == -999] = self.fill_value
             else:
                 data[key] = np.asarray(data[key])
-                data[key][data[key] == -999] = self.fill_value
 
         data = self.subset_data(data, min_date, max_date, min_lat, max_lat, min_lon, max_lon)
         return data
 
     @staticmethod
     def subset_data(data, min_date, max_date, min_lat, max_lat, min_lon, max_lon):
+        """
+        Removes any data from the dictionary that does not meet the specified time, latitude and longitude requirements.
 
+        :param data: (dictionary)
+        dictionary of sage ii data. Must have the fields 'mjd', 'Lat' and 'Lon'. All others are optional
+        :param min_date: (str)
+        start date in iso format
+        :param max_date: (str)
+        end date in iso format
+        :param min_lat: (float)
+        minimum latitude
+        :param max_lat: (float)
+        maximum latitude
+        :param min_lon: (float)
+        minimum longitude
+        :param max_lon: (float)
+        maximum longitude
+        :return:
+        returns the dictionary with only data in the valid latitude, longitude and time range
+        """
         min_mjd = Time(min_date, format='iso').mjd
         max_mjd = Time(max_date, format='iso').mjd
 
@@ -358,11 +382,3 @@ class SAGEIILoaderV700(object):
             print('no data satisfies the criteria')
 
         return data
-
-if __name__ == "__main__":
-
-    c = SAGEIILoaderV700()
-    c.data_folder = 'C:\\Users\\lando\\Desktop\\SAGE_II_v7.00'
-    data = c.load_data('1984-1-1', '1986-2-28',-20,20)
-
-    print('done')
