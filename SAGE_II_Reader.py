@@ -13,7 +13,7 @@ class SAGEIILoaderV700(object):
     https://eosweb.larc.nasa.gov/project/sage2/sage2_v7_table
 
     :example
-    sage = SAGEIILoaderV700
+    sage = SAGEIILoaderV700()
     sage.data_folder = 'path/to/data'
     data = sage.load_data('2004-1-1','2004-5-1')
 
@@ -173,8 +173,13 @@ class SAGEIILoaderV700(object):
         :return:
         filename of the spec file where the data is stored
         """
-        return os.path.join(self.data_folder,
+        file = os.path.join(self.data_folder,
                             self.spec_file + str(int(year)) + str(int(month)).zfill(2) + '.' + self.version)
+
+        if not os.path.isfile(file):
+            file = None
+
+        return file
 
     def get_index_filename(self, year, month):
         """
@@ -187,8 +192,14 @@ class SAGEIILoaderV700(object):
         :return:
         filename of the index file where the data is stored
         """
-        return os.path.join(self.data_folder,
-                            self.index_file + str(int(year)) + str(int(month)).zfill(2) + '.' + self.version)
+
+        file = os.path.join(self.data_folder,
+                     self.index_file + str(int(year)) + str(int(month)).zfill(2) + '.' + self.version)
+
+        if not os.path.isfile(file):
+            file = None
+
+        return file
 
     def read_spec_file(self, file, num_profiles):
         """
@@ -250,11 +261,11 @@ class SAGEIILoaderV700(object):
         #make a more useable time field
         date_str = []
         #If the time overflows by less than the scan time just set it to midnight
-        data['HHMMSS'][(data['HHMMSS']>240000) & (data['HHMMSS']<(240000 + data['Duration']))] = 235959
+        data['HHMMSS'][(data['HHMMSS']>=240000) & (data['HHMMSS']<(240000 + data['Duration']))] = 235959
         #otherwise, set it as invalid
-        data['HHMMSS'][data['HHMMSS'] > 240000] = -999
+        data['HHMMSS'][data['HHMMSS'] >= 240000] = -999
         for idx,(ymd, hms) in enumerate(zip(data['YYYYMMDD'], data['HHMMSS'])):
-            if (ymd == -999) | (hms == -999):
+            if (ymd < 0) | (hms < 0):
                 date_str.append('1970-1-1 00:00:00')    #invalid sage ii date
             else:
                 hours = int(hms/10000)
@@ -303,40 +314,47 @@ class SAGEIILoaderV700(object):
 
                 if (time.mjd <= max_time.mjd) & (time.mjd >= min_time.mjd):
                     print('loading data for : ' + time.iso)
-                    indx_data = self.read_index_file(self.get_index_filename(time.datetime.year, time.datetime.month))
-                    numprof = indx_data['num_prof']
-                    spec_data = self.read_spec_file(self.get_spec_filename(time.datetime.year,  time.datetime.month), numprof )
+                    indx_file = self.get_index_filename(time.datetime.year, time.datetime.month)
+                    if indx_file is not None:
+                        indx_data = self.read_index_file(indx_file)
+                        numprof = indx_data['num_prof']
+                        spec_data = self.read_spec_file(self.get_spec_filename(time.datetime.year,  time.datetime.month), numprof )
 
-                    #get rid of the duplicate names for InfVec
-                    for sp in spec_data:
-                        sp['ProfileInfVec'] = copy.copy(sp['InfVec'])
-                        del sp['InfVec']
+                        #get rid of the duplicate names for InfVec
+                        for sp in spec_data:
+                            sp['ProfileInfVec'] = copy.copy(sp['InfVec'])
+                            del sp['InfVec']
 
-                    #get rid of extraneous profiles in the index so index and spec are the same lengths
-                    for key in indx_data.keys():
-                        if hasattr(indx_data[key], '__len__'):
-                            indx_data[key] = np.delete(indx_data[key], np.arange(numprof,930))
+
+                        for key in indx_data.keys():
+                            # get rid of extraneous profiles in the index so index and spec are the same lengths
+                            if hasattr(indx_data[key], '__len__'):
+                                indx_data[key] = np.delete(indx_data[key], np.arange(numprof,930))
 
                             #add the index values to the data set
                             if key in data.keys():
-                                data[key] = np.append(data[key],indx_data[key])
+                                # we dont want to replicate certain fields
+                                if (key[0:3] != 'Alt') & (key[0:5] != 'Range') & (key[0:7] != 'FillVal'):
+                                    data[key] = np.append(data[key],indx_data[key])
                             else:
                                 data[key] = indx_data[key]
 
-                    #initialize the data dictionaries as lists
-                    if init is False:
-                        for key in spec_data[0].keys():
-                            data[key] = []
-                        init = True
+                        #initialize the data dictionaries as lists
+                        if init is False:
+                            for key in spec_data[0].keys():
+                                data[key] = []
+                            init = True
 
-                    # add the spec values to the data set
-                    for key in spec_data[0].keys():
-                        data[key].append(np.asarray([sp[key] for sp in spec_data]))
+                        # add the spec values to the data set
+                        for key in spec_data[0].keys():
+                            data[key].append(np.asarray([sp[key] for sp in spec_data]))
 
         #join all of our lists into an array - this could be done more elegantly with vstack to avoid
         # the temporary lists, but this is much faster
         for key in data.keys():
-            if len(data[key][0].shape) > 0:
+            if key == 'FillVal':
+                data[key] = float(data[key]) #make this a simple float rather than zero dimensional array
+            elif len(data[key][0].shape) > 0:
                 data[key] = np.concatenate(data[key],axis=0)
             else:
                 data[key] = np.asarray(data[key])
@@ -382,3 +400,11 @@ class SAGEIILoaderV700(object):
             print('no data satisfies the criteria')
 
         return data
+
+if __name__ == "__main__":
+
+    sage = SAGEIILoaderV700()
+    sage.data_folder = 'C:\\Users\\lando\\Desktop\\v7.00_python'
+    data = sage.load_data('2004-1-1', '2004-5-1', -10,10)
+
+    print('done')
