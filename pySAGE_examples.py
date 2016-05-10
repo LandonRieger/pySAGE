@@ -12,7 +12,7 @@ def ozone_time_series( data_folder ):
     #load the data
     sage = SAGEIILoaderV700()
     sage.data_folder = data_folder
-    data = sage.load_data('1985-6-1','2006-6-1', -10,10)
+    data = sage.load_data('1986-6-2','2006-6-29', -10,10)
 
     #setup the time bins
     time_res = 30
@@ -44,4 +44,4 @@ def ozone_time_series( data_folder ):
     plt.show()
 
 if __name__ == "__main__":
-    ozone_time_series('C:\\path\\to\\data')
+    ozone_time_series('C:\\Users\\lando\\Desktop\\v7.00_python')

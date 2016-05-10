@@ -306,48 +306,57 @@ class SAGEIILoaderV700(object):
 
         data = dict()
         init = False
-        #load in the desired data in the time range
-        for year in range(1985,2006):
-            for month in range(1,13):
 
-                time = Time(str(year) + '-' + str(month) + '-01 00:00:00', format='iso')
+        #create a list of unique year/month combinations between the start/end dates
+        uniq = OrderedDict()
+        for year in [(t.datetime.year,t.datetime.month) for t in Time(np.arange(min_time.mjd,max_time.mjd,27),format='mjd')]:
+            uniq[year] = year
 
-                if (time.mjd <= max_time.mjd) & (time.mjd >= min_time.mjd):
-                    print('loading data for : ' + time.iso)
-                    indx_file = self.get_index_filename(time.datetime.year, time.datetime.month)
-                    if indx_file is not None:
-                        indx_data = self.read_index_file(indx_file)
-                        numprof = indx_data['num_prof']
-                        spec_data = self.read_spec_file(self.get_spec_filename(time.datetime.year,  time.datetime.month), numprof )
+        #load in the data from the desired months
+        for (year,month) in list(uniq.values()):
 
-                        #get rid of the duplicate names for InfVec
-                        for sp in spec_data:
-                            sp['ProfileInfVec'] = copy.copy(sp['InfVec'])
-                            del sp['InfVec']
+            print('loading data for : ' + str(year) + '/' + str(month))
+            indx_file = self.get_index_filename(year, month)
+
+            #if the file does not exist move on to the next month
+            if indx_file is None:
+                continue
+
+            indx_data = self.read_index_file(indx_file)
+            numprof = indx_data['num_prof']
+            spec_data = self.read_spec_file(self.get_spec_filename(year,  month), numprof )
+
+            #get rid of the duplicate names for InfVec
+            for sp in spec_data:
+                sp['ProfileInfVec'] = copy.copy(sp['InfVec'])
+                del sp['InfVec']
 
 
-                        for key in indx_data.keys():
-                            # get rid of extraneous profiles in the index so index and spec are the same lengths
-                            if hasattr(indx_data[key], '__len__'):
-                                indx_data[key] = np.delete(indx_data[key], np.arange(numprof,930))
+            for key in indx_data.keys():
+                # get rid of extraneous profiles in the index so index and spec are the same lengths
+                if hasattr(indx_data[key], '__len__'):
+                    indx_data[key] = np.delete(indx_data[key], np.arange(numprof,930))
 
-                            #add the index values to the data set
-                            if key in data.keys():
-                                # we dont want to replicate certain fields
-                                if (key[0:3] != 'Alt') & (key[0:5] != 'Range') & (key[0:7] != 'FillVal'):
-                                    data[key] = np.append(data[key],indx_data[key])
-                            else:
-                                data[key] = indx_data[key]
+                #add the index values to the data set
+                if key in data.keys():
+                    # we dont want to replicate certain fields
+                    if (key[0:3] != 'Alt') & (key[0:5] != 'Range') & (key[0:7] != 'FillVal'):
+                        data[key] = np.append(data[key],indx_data[key])
+                else:
+                    if key == 'FillVal':
+                        data[key] = indx_data[key]
+                    else:
+                        data[key] = [indx_data[key]]
 
-                        #initialize the data dictionaries as lists
-                        if init is False:
-                            for key in spec_data[0].keys():
-                                data[key] = []
-                            init = True
+            #initialize the data dictionaries as lists
+            if init is False:
+                for key in spec_data[0].keys():
+                    data[key] = []
+                init = True
 
-                        # add the spec values to the data set
-                        for key in spec_data[0].keys():
-                            data[key].append(np.asarray([sp[key] for sp in spec_data]))
+            # add the spec values to the data set
+            for key in spec_data[0].keys():
+                data[key].append(np.asarray([sp[key] for sp in spec_data]))
 
         #join all of our lists into an array - this could be done more elegantly with vstack to avoid
         # the temporary lists, but this is much faster
