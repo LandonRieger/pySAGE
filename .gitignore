@@ -1,0 +1,6 @@
+*.gz
+*.pdf
+*.aux
+*.log
+*.p
+*__pycache__

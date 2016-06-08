@@ -1,6 +1,5 @@
 import numpy as np
 import os
-from struct import unpack
 from collections import OrderedDict
 from astropy.time import Time
 import copy
