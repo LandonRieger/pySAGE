@@ -408,11 +408,3 @@ class SAGEIILoaderV700(object):
             print('no data satisfies the criteria')
 
         return data
-
-if __name__ == "__main__":
-
-    sage = SAGEIILoaderV700()
-    sage.data_folder = 'C:\\Users\\lando\\Desktop\\v7.00_python'
-    data = sage.load_data('2004-1-1', '2004-5-1', -10,10)
-
-    print('done')

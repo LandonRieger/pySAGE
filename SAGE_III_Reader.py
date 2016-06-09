@@ -4,17 +4,13 @@ from collections import OrderedDict
 from astropy.time import Time
 import copy
 
-class SAGEIIIDataLoaderV400(object):
+class SAGEIIILoaderV400(object):
 
     def __init__(self):
 
         self.data_folder = ''
-        self.version = 'v04.00'
-        self.data_file = ''
-        self.xml_file = '.xml'
         self.data_format = self.get_data_format()
-
-        self.fill_value = np.nan
+        self.sage_ii_format = True
 
 
     def get_data_format(self):
@@ -36,7 +32,7 @@ class SAGEIIIDataLoaderV400(object):
         data_format['Version: GRAM 95']                     = (44,48,1,'float32')
         data_format['Version: Meteorlogical']               = (48,52,1,'float32')
 
-        data_format['Altitude–Based Grid Spacing']          = (52,56,1,'float32')
+        data_format['Altitude–Based Grid Spacing (km)']          = (52,56,1,'float32')
         data_format['Number of Altitude–Based Array Values']= (56,60,1,'int32')
         data_format['Number of Aerosol Channels']           = (60,64,1,'int32')
         data_format['Number of Ground Track Values']        = (64,68,1,'int32')
@@ -208,11 +204,39 @@ class SAGEIIIDataLoaderV400(object):
         second  = [str(t).zfill(2) for t in time % 100]
 
         time_str = [y + '-' + m + '-' + d + ' ' + h + ':' + mi + ':' + s for y,m,d,h,mi,s in zip(year,month,day,hour,minute,second)]
+        try:
+            t = Time(time_str,format='iso')
+        except:
+            print('time error')
 
-        t = Time(time_str,format='iso')
+
         data['mjd'] = np.mean(t.mjd)
         data['time'] = t
+
         return data
+
+    def add_sage_ii_fields(self, data):
+
+        data['O3'] = data['LSQ Ozone Concentration']
+        data['NO2'] = data['NO2 Concentration']
+        data['H2O'] = data['Water Vapor Concentration']
+        data['Alt_Grid'] = np.arange(0.5, 100.1, 0.5)
+        data['Range_O3'] = np.array([0.0, 100.0])
+        data['Range_NO2'] = np.array([0.0, 100.0])
+        data['FillVal'] = data['Fill Value Float'][0]
+
+        data['Ext384'] = data['Aerosol Extinction Channel 1']
+        data['Ext448'] = data['Aerosol Extinction Channel 2']
+        data['Ext520'] = data['Aerosol Extinction Channel 3']
+        data['Ext601'] = data['Aerosol Extinction Channel 4']
+        data['Ext675'] = data['Aerosol Extinction Channel 5']
+        data['Ext755'] = data['Aerosol Extinction Channel 6']
+        data['Ext869'] = data['Aerosol Extinction Channel 7']
+        data['Ext1021'] = data['Aerosol Extinction Channel 8']
+        data['Ext1545'] = data['Aerosol Extinction Channel 9']
+
+        return data
+
 
     def load_data(self, min_date, max_date, min_lat=-90, max_lat=90, min_lon=-180, max_lon=180):
 
@@ -244,21 +268,21 @@ class SAGEIIIDataLoaderV400(object):
 
         good = (mjd > min_mjd.mjd) & (mjd < max_mjd.mjd) & (lat > min_lat) & (lat < max_lat) & (lon > min_lon) & (lon < max_lon)
 
-        #reshape our list of data into a dictionary of numpy arrays
-        for key in d[0].keys():
-            data[key] = np.asarray([t[key] for t in d])[good]
-            if key == 'time':
-                pass
-            elif len(data[key].shape) < 2:
-                pass
-            elif data[key].shape[1] == 1:
-                data[key] = data[key].flatten()
+        if (any(good)) & (len(d) > 0):
+            #reshape our list of data into a dictionary of numpy arrays
+            for key in d[0].keys():
+                data[key] = np.asarray([t[key] for t in d])[good]
+                if key == 'time':
+                    pass
+                elif len(data[key].shape) < 2:
+                    pass
+                elif data[key].shape[1] == 1:
+                    data[key] = data[key].flatten()
+
+            if self.sage_ii_format:
+                data = self.add_sage_ii_fields(data)
+
+        else:
+            data = None
 
         return data
-
-if __name__ == '__main__':
-
-    s = SAGEIIIDataLoaderV400()
-    s.data_folder = r'C:\Users\lando\Desktop\v4.00_python'
-    data = s.load_data('2005-10-1', '2005-10-30')
-    print('done')
