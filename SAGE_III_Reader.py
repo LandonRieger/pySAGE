@@ -1,11 +1,8 @@
 import numpy as np
 import os
-from struct import unpack
 from collections import OrderedDict
 from astropy.time import Time
-import h5py
 import copy
-
 
 class SAGEIIIDataLoaderV400(object):
 
@@ -60,7 +57,7 @@ class SAGEIIIDataLoaderV400(object):
         data_format['Data Capture End Time']                = (112,116,1,'int32')
         data_format['Subtangent End Latitude']              = (116,120,1,'float32')
         data_format['Subtangent End Longitude']             = (120,124,1,'float32')
-        data_format['Subtangent End Altitude']              = (124,128,1,'float32')
+        data_format['Subtangent End Ray Path Direction']    = (124,128,1,'float32')
 
         data_format['Date']                                 = (128,172,1,'int32')
         data_format['Time']                                 = (172,216,1,'int32')
@@ -166,7 +163,7 @@ class SAGEIIIDataLoaderV400(object):
         data_format['Aerosol Spectral Dependence Flag']             = (43056, 43416, 1, 'float32')
         data_format['1020nm/Rayleigh Extinction Ratio']             = (43416, 43776, 1, 'float32')
         data_format['1020nm/Rayleigh Extinction Ratio Uncertainty'] = (43776, 44136, 1, 'float32')
-        data_format['1020nm/Rayleigh Extinction Ratio QA Bit Flags']= (44136, 44495, 1, 'int32')
+        data_format['1020nm/Rayleigh Extinction Ratio QA Bit Flags']= (44136, 44496, 1, 'int32')
 
         return data_format
 
@@ -187,9 +184,81 @@ class SAGEIIIDataLoaderV400(object):
             except:
                 print(key)
 
+        #add some extra fields for convenience
+        lat = data['Subtangent Latitude']
+        lat[lat == data['Fill Value Float']] = np.nan
+        data['Lat'] = np.nanmean(lat)
+        lon = data['Subtangent Longitude']
+        lon[lon == data['Fill Value Float']] = np.nan
+        data['Lon'] = np.nanmean(lon)
+
+        #add a modified julian date and astropy object time fields
+        date = data['Date']
+        date = np.delete(date,np.where(date == data['Fill Value Int']))
+
+        year    = [str(d)          for d in np.asarray(date/10000,dtype=int)]
+        month   = [str(d).zfill(2) for d in np.asarray(date % 10000 / 100,dtype=int)]
+        day     = [str(d).zfill(2) for d in date % 100]
+
+        time    = data['Time']
+        time    = np.delete(time, np.where(time == data['Fill Value Int']))
+
+        hour    = [str(t).zfill(2) for t in np.asarray(time/10000,dtype=int)]
+        minute  = [str(t).zfill(2) for t in np.asarray(time/100,dtype=int) % 100]
+        second  = [str(t).zfill(2) for t in time % 100]
+
+        time_str = [y + '-' + m + '-' + d + ' ' + h + ':' + mi + ':' + s for y,m,d,h,mi,s in zip(year,month,day,hour,minute,second)]
+
+        t = Time(time_str,format='iso')
+        data['mjd'] = np.mean(t.mjd)
+        data['time'] = t
+        return data
+
+    def load_data(self, min_date, max_date, min_lat=-90, max_lat=90, min_lon=-180, max_lon=180):
+
+        min_mjd = Time(min_date,format='iso')
+        max_mjd = Time(max_date,format='iso')
+        mjds = np.arange(int(min_mjd.mjd), int(max_mjd.mjd) + 1, 1)
+
+        data = dict()
+        d = []
+        for mjd in mjds:
+
+            t = Time(mjd,format='mjd')
+            folder = os.path.join(self.data_folder,str(t.datetime.year) + '.' + str(t.datetime.month).zfill(2) + '.' + str(t.datetime.day).zfill(2))
+
+            if not os.path.isdir(folder):
+                continue
+
+            files = os.listdir(folder)
+
+            for file in files:
+                if file[-3::] == 'xml':
+                    pass
+                elif file[-2::] == '00':
+                    d.append(self.load_file(os.path.join(folder,file)))
+
+        lat = np.asarray([t['Lat'] for t in d]).flatten()
+        lon = np.asarray([t['Lon'] for t in d]).flatten()
+        mjd = np.asarray([t['mjd'] for t in d]).flatten()
+
+        good = (mjd > min_mjd.mjd) & (mjd < max_mjd.mjd) & (lat > min_lat) & (lat < max_lat) & (lon > min_lon) & (lon < max_lon)
+
+        #reshape our list of data into a dictionary of numpy arrays
+        for key in d[0].keys():
+            data[key] = np.asarray([t[key] for t in d])[good]
+            if key == 'time':
+                pass
+            elif len(data[key].shape) < 2:
+                pass
+            elif data[key].shape[1] == 1:
+                data[key] = data[key].flatten()
+
         return data
 
 if __name__ == '__main__':
 
     s = SAGEIIIDataLoaderV400()
-    s.load_file()
+    s.data_folder = r'C:\Users\lando\Desktop\v4.00_python'
+    data = s.load_data('2005-10-1', '2005-10-30')
+    print('done')
