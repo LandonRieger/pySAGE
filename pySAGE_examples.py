@@ -1,9 +1,12 @@
-from SAGE_II_Reader import SAGEIILoaderV700
-from SAGE_III_Reader import SAGEIIILoaderV400
-from astropy.time import Time
+import warnings
+
 import matplotlib.pyplot as plt
 import numpy as np
-import warnings
+from astropy.time import Time
+
+from sageiiireader.SAGE_III_Reader import SAGEIIILoaderV400
+from sageiireader.SAGE_II_Reader import SAGEIILoaderV700
+
 
 def sage_ii_ozone_time_series( data_folder ):
     """
