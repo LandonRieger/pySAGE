@@ -3,4 +3,6 @@
 *.aux
 *.log
 *.p
-*__pycache__
+*.egg-info/
+*.egg
+__pycache__/

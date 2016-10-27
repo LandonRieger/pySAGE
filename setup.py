@@ -4,7 +4,8 @@ setup(name='pysagereader',
       version='0.1.0',
       description='SAGE binary file readers',
       author='USASK ARG',
+      license='MIT',
       url='https://github.com/LandonRieger/pySAGE.git',
       packages=find_packages(),
-      requires=['numpy', 'astropy'],
+      install_requires=['numpy', 'astropy']
       )

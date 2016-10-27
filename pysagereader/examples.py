@@ -4,8 +4,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 from astropy.time import Time
 
-from sageiiireader.SAGE_III_Reader import SAGEIIILoaderV400
-from sageiireader.SAGE_II_Reader import SAGEIILoaderV700
+from pysagereader.sage_iii_reader import SAGEIIILoaderV400
+from pysagereader.sage_ii_reader import SAGEIILoaderV700
 
 
 def sage_ii_ozone_time_series( data_folder ):
