@@ -19,7 +19,7 @@ To install the package from pypi run:
 
 SAGE II Reader
 **************
-As far as possible the original SAGE II variable names used in the original IDL scripts and `documentation <https://eosweb.larc.nasa.gov/sites/default/files/project/sage2/readme/readme_sage2_v6.20.txt/>`_ have been adopted.
+As far as possible the original SAGE II variable names used in the original IDL scripts and `documentation <https://eosweb.larc.nasa.gov/sites/default/files/project/sage2/readme/readme_sage2_v6.20.txt >`_ have been adopted.
 
 Altitude Range for Species
 --------------------------
@@ -90,13 +90,13 @@ Process Tracking Flag info
 **Processing Success**
 Dropped                Value is non-zero if event is dropped
 InfVec                 32 bits describing the event processing
-Ephemeris:
+**Ephemeris**
 Eph_Cre_Date           Record creation date (yyyymmdd)
 Eph_Cre_Time           Record creation time (hhmmss)
 **Met**
 Met_Cre_Date           Record creation date (yyyymmdd)
 Met_Cre_Time           Record creation time (hhmmss)
-Refraction:
+**Refraction**
 Ref_Cre_Date           Record creation date (yyyymmdd)
 Ref_Cre_Time           Record creation time (hhmmss)
 **Transmission**
