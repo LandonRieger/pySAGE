@@ -6,7 +6,7 @@ from collections import OrderedDict
 from astropy.time import Time
 import logging
 import copy
-from typing import List, Dict, Union
+from typing import List, Dict, Union, Tuple
 
 
 class SAGEIILoaderV700(object):
@@ -57,6 +57,10 @@ class SAGEIILoaderV700(object):
         `date['time']` is an astropy.time object containing the times of each scan
 
         """
+
+        if type(species) == str:
+            species = [species]
+
         self.data_folder = ''  # Type: str
         self.version = '7.00'
         self.index_file = 'SAGE_II_INDEX_'
@@ -73,7 +77,7 @@ class SAGEIILoaderV700(object):
         self.filter_ozone = filter_ozone
 
     @staticmethod
-    def get_spec_format() -> OrderedDict[str: (str, int, int)]:
+    def get_spec_format() -> Dict[str, Tuple[str, int, int]]:
         """
         spec format taken from sg2_specinfo.pro provided in the v7.00 download
 
@@ -128,7 +132,7 @@ class SAGEIILoaderV700(object):
         return spec
 
     @staticmethod
-    def get_index_format() -> OrderedDict[str: (str, int, int)]:
+    def get_index_format() -> Dict[str, Tuple[str, int, int]]:
         """
         index format taken from sg2_indexinfo.pro provided in the v7.00 download
 
@@ -414,7 +418,7 @@ class SAGEIILoaderV700(object):
         data = self.subset_data(data, min_date, max_date, min_lat, max_lat, min_lon, max_lon)
 
         if self.output_format == 'xarray':
-            self.convert_to_xarray(data)
+            data = self.convert_to_xarray(data)
 
         return data
 
@@ -486,51 +490,60 @@ class SAGEIILoaderV700(object):
         time = pd.to_timedelta(data['mjd'], 'D') + pd.Timestamp('1858-11-17')
 
         for key in fields['general']:
-            xr_data.append(xr.DataArray(data[key], coords=[time], dims=['time'], name=key))
+            xr_data.append(xr.DataArray(data[key], coords=[time], dims=['time'], name=self.get_name(key)))
 
         for key in fields['flags']:
-            xr_data.append(xr.DataArray(data[key], coords=[time], dims=['time'], name=key))
+            xr_data.append(xr.DataArray(data[key], coords=[time], dims=['time'], name=self.get_name(key)))
 
         for key in fields['profile_flags']:
-            xr_data.append(xr.DataArray(data[key], coords=[time, data['Alt_Grid']],
-                                        dims=['time', 'Alt_Grid'], name=key))
+            xr_data.append(xr.DataArray(data[key], coords=[time, data['Alt_Grid'][0:140]],
+                                        dims=['time', 'Alt_Grid'], name=self.get_name(key)))
 
         if 'aerosol' in self.species:
             altitude = data['Alt_Grid'][0:80]
             wavel = np.array([386.0, 452.0, 525.0, 1020.0])
             ext = np.array([data['Ext386'], data['Ext452'], data['Ext525'], data['Ext1020']])
-            xr_data.append(xr.DataArray(ext, coords=[time, altitude, wavel],
-                                        dims=['time', 'Alt_Grid', 'wavelength'], name='Ext'))
+            xr_data.append(xr.DataArray(ext, coords=[wavel, time, altitude],
+                                        dims=['wavelength', 'time', 'Alt_Grid'], name='Ext'))
             ext = np.array([data['Ext386_Err'], data['Ext452_Err'], data['Ext525_Err'], data['Ext1020_Err']])
-            xr_data.append(xr.DataArray(ext, coords=[time, altitude, wavel],
-                                        dims=['time', 'Alt_Grid', 'wavelength'], name='Ext_Err'))
+            xr_data.append(xr.DataArray(ext, coords=[wavel, time, altitude],
+                                        dims=['wavelength', 'time', 'Alt_Grid'], name='Ext_Err'))
             for key in fields['particle_size']:
-                xr_data.append(xr.DataArray(data[key], coords=[time, altitude], dims=['time', 'Alt_Grid'], name=key))
+                xr_data.append(xr.DataArray(data[key], coords=[time, altitude],
+                                            dims=['time', 'Alt_Grid'], name=self.get_name(key)))
         if 'no2' in self.species:
             altitude = data['Alt_Grid'][0:100]
             for key in fields['no2']:
-                xr_data.append(xr.DataArray(data[key], coords=[time, altitude], dims=['time', 'Alt_Grid'], name=key))
+                xr_data.append(xr.DataArray(data[key], coords=[time, altitude],
+                                            dims=['time', 'Alt_Grid'], name=self.get_name(key)))
         if 'h2o' in self.species:
             altitude = data['Alt_Grid'][0:100]
             for key in fields['h2o']:
-                xr_data.append(xr.DataArray(data[key], coords=[time, altitude], dims=['time', 'Alt_Grid'], name=key))
+                xr_data.append(xr.DataArray(data[key], coords=[time, altitude],
+                                            dims=['time', 'Alt_Grid'], name=self.get_name(key)))
         if any(i in ['ozone', 'o3'] for i in self.species):
             altitude = data['Alt_Grid'][0:140]
             for key in fields['ozone']:
-                xr_data.append(xr.DataArray(data[key], coords=[time, altitude], dims=['time', 'Alt_Grid'], name=key))
+                xr_data.append(xr.DataArray(data[key], coords=[time, altitude],
+                                            dims=['time', 'Alt_Grid'], name=self.get_name(key)))
         if 'background' in self.species:
             altitude = data['Alt_Grid'][0:140]
             for key in fields['background']:
-                xr_data.append(xr.DataArray(data[key], coords=[time, altitude], dims=['time', 'Alt_Grid'], name=key))
+                xr_data.append(xr.DataArray(data[key], coords=[time, altitude],
+                                            dims=['time', 'Alt_Grid'], name=self.get_name(key)))
 
         xr_data = xr.merge(xr_data)
 
         if self.cf_names:
-            xr_data.rename({'Lat': 'latitude',
-                            'Lon': 'longitude',
-                            'Alt_Grid': 'altitude',
-                            'Beta': 'beta_angle',
-                            'Ext': 'extinction',
-                            'Ext_Err': 'extinction_error'})
+            xr_data.rename({self.get_name('Lat'): 'latitude',
+                            self.get_name('Lon'): 'longitude',
+                            self.get_name('Alt_Grid'): 'altitude',
+                            self.get_name('Beta'): 'beta_angle',
+                            self.get_name('Ext'): 'extinction',
+                            self.get_name('Ext_Err'): 'extinction_error'})
 
         return xr_data
+
+    @staticmethod
+    def get_name(key):
+        return key

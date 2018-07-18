@@ -14,7 +14,7 @@ def sage_ii_ozone_time_series( data_folder ):
     """
 
     #load the data
-    sage = SAGEIILoaderV700()
+    sage = SAGEIILoaderV700(output_format='xarray')
     sage.data_folder = data_folder
     data = sage.load_data('2004-10-19','2005-7-1', -10,10)
 
@@ -83,4 +83,4 @@ def plot_data(alts,mjds,val):
     plt.ylim(15,50)
 
 if __name__ == "__main__":
-    sage_ii_ozone_time_series(r'/HOME/rlr001/Documents/data/sage_ii_v700/')
+    sage_ii_ozone_time_series(r'C:\Users\lando\Desktop\Sage2_v7.00')
