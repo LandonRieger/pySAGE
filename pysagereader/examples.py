@@ -83,4 +83,4 @@ def plot_data(alts,mjds,val):
     plt.ylim(15,50)
 
 if __name__ == "__main__":
-    plt.show()
+    sage_ii_ozone_time_series(r'/HOME/rlr001/Documents/data/sage_ii_v700/')
