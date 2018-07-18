@@ -12,9 +12,9 @@ def sage_ii_ozone_time_series(data_folder):
     """
 
     # load the data
-    sage = SAGEIILoaderV700(output_format='xarray', species=['aerosol'])
+    sage = SAGEIILoaderV700(output_format='xarray', cf_names=True, normalize_percent_error=True, return_flags=True)
     sage.data_folder = data_folder
-    data = sage.load_data('2004-10-19', '2005-7-1', -10, 10)
+    data, flags = sage.load_data('2004-10-19', '2005-7-1', -10, 10)
 
     # setup the time bins
     time_res = 30

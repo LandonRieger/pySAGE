@@ -9,10 +9,26 @@ import copy
 from typing import List, Dict, Union, Tuple
 
 
+def git_version():
+    """
+    Get the hash of the current git revision
+
+    Returns
+    -------
+    bytes
+       The git revision
+    """
+    from subprocess import Popen, PIPE
+    gitproc = Popen(['git', 'rev-parse', 'HEAD'], stdout=PIPE)
+    (stdout, _) = gitproc.communicate()
+    return stdout.strip()
+
+
 class SAGEIILoaderV700(object):
 
     def __init__(self, output_format: str='xarray', species: List[str]=('aerosol', 'h2o', 'no2', 'ozone', 'background'),
-                 cf_names: bool=False, filter_aerosol: bool=False, filter_ozone: bool=False):
+                 cf_names: bool=False, filter_aerosol: bool=False, filter_ozone: bool=False,
+                 enumerate_flags: bool=False, normalize_percent_error: bool=False, return_flags: bool=False):
         """
         Class designed to load the v7.00 SAGE II spec and index files provided by NASA ADSC into python
 
@@ -41,6 +57,9 @@ class SAGEIILoaderV700(object):
             * Exclusion of all data points at altitude and below the occurrence of both the 525nm aerosol extinction
               value exceeding 0.001 km^-1 and the 525/1020 extinction ratio falling below 1.4
             * Exclusion of all data points below 35km an 200% or larger uncertainty estimate
+
+        :param enumerate_flags: expand the index and species flags to their boolean values.
+        :param normalize_percent_error: give the species error as percent rather than percent * 100
 
 
         Example
@@ -75,7 +94,9 @@ class SAGEIILoaderV700(object):
         self.cf_names = cf_names
         self.filter_aerosol = filter_aerosol
         self.filter_ozone = filter_ozone
-        self.normalize_percent_error = True
+        self.normalize_percent_error = normalize_percent_error
+        self.enumerate_flags = enumerate_flags
+        self.return_flags = return_flags
 
     @staticmethod
     def get_spec_format() -> Dict[str, Tuple[str, int, int]]:
@@ -467,7 +488,7 @@ class SAGEIILoaderV700(object):
 
         return data
 
-    def convert_to_xarray(self, data: Dict) -> xr.Dataset:
+    def convert_to_xarray(self, data: Dict) -> Union[xr.Dataset, Tuple[xr.Dataset, xr.Dataset]]:
         """
         :param data:
             Data from the `load_data` function
@@ -475,8 +496,19 @@ class SAGEIILoaderV700(object):
         :return:
             data formatted to an xarray Dataset
         """
+
+        # split up the fields into one of different sizes and optional returns
         fields = dict()
+
+        # not currently returned
         fields['geometry'] = ['Tan_Alt', 'Tan_Lat', 'Tan_Lon']
+        fields['flags'] = ['InfVec', 'Dropped']
+        fields['profile_flags'] = ['ProfileInfVec']
+
+        # always returned - 1 per profile
+        fields['general'] = ['Event_Num', 'Lat', 'Lon', 'Beta', 'Duration', 'Type_Sat', 'Type_Tan', 'Trop_Height']
+
+        # optional return parameters
         fields['background'] = ['NMC_Pres', 'NMC_Temp', 'NMC_Dens', 'NMC_Dens_Err', 'Density', 'Density_Err']
         fields['ozone'] = ['O3', 'O3_Err']
         fields['no2'] = ['NO2', 'NO2_Err']
@@ -484,23 +516,15 @@ class SAGEIILoaderV700(object):
         fields['aerosol'] = ['Ext386', 'Ext452', 'Ext525', 'Ext1020', 'Ext386_Err', 'Ext452_Err', 'Ext525_Err',
                              'Ext1020_Err']
         fields['particle_size'] = ['SurfDen', 'Radius', 'SurfDen_Err', 'Radius_Err']
-        fields['general'] = ['YYYYMMDD', 'Event_Num', 'HHMMSS', 'Day_Frac', 'Lat', 'Lon', 'Beta', 'Duration',
-                             'Type_Sat', 'Type_Tan']
-        fields['flags'] = ['InfVec', 'Dropped']
-        fields['profile_flags'] = ['ProfileInfVec']
 
         xr_data = []
+        index_flags = self.convert_index_bit_flags(data)
+        species_flags = self.convert_species_bit_flags(data)
         time = pd.to_timedelta(data['mjd'], 'D') + pd.Timestamp('1858-11-17')
 
+        data['Trop_Height'] = data['Trop_Height'].flatten()
         for key in fields['general']:
             xr_data.append(xr.DataArray(data[key], coords=[time], dims=['time'], name=key))
-
-        for key in fields['flags']:
-            xr_data.append(xr.DataArray(data[key], coords=[time], dims=['time'], name=key))
-
-        for key in fields['profile_flags']:
-            xr_data.append(xr.DataArray(data[key], coords=[time, data['Alt_Grid'][0:140]],
-                                        dims=['time', 'Alt_Grid'], name=key))
 
         if 'aerosol' in self.species or self.filter_ozone:  # we need aerosol to filter ozone
             altitude = data['Alt_Grid'][0:80]
@@ -530,8 +554,31 @@ class SAGEIILoaderV700(object):
                 xr_data.append(xr.DataArray(data[key], coords=[time, altitude],
                                             dims=['time', 'Alt_Grid'], name=key))
 
+        if 'background' in self.species:
+            altitude = data['Alt_Grid'][0:140]
+            for key in fields['background']:
+                xr_data.append(xr.DataArray(data[key], coords=[time, altitude],
+                                            dims=['time', 'Alt_Grid'], name=key))
+
+        xr_data = xr.merge(xr_data)
+
+        if self.enumerate_flags:
+            xr_data = xr.merge([xr_data, index_flags, species_flags])
+
+        for var in xr_data.variables.keys():
+            if xr_data[var].dtype == 'float32' or 'Err' in var:
+                xr_data[var] = xr_data[var].where(xr_data[var] != data['FillVal'])
+
+        # determine cloud filter for aerosol data
+        cloud_filter = xr.full_like(species_flags.Cloud_Bit_1, fill_value=True, dtype=bool)
+        min_alt = (xr_data.Alt_Grid * (species_flags.Cloud_Bit_1 & species_flags.Cloud_Bit_2)).max(dim='Alt_Grid')
+        cloud_filter = cloud_filter.where(cloud_filter.Alt_Grid > min_alt)
+        xr_data['cloud_filter'] = np.isnan(cloud_filter)
+
+        # determine valid ozone altitudes
+        if any(i in ['ozone', 'o3'] for i in self.species):
             # add an ozone filter field for convenience
-            ozone_good = xr.full_like(xr_data.Cloud_Bit_1, fill_value=True, dtype=bool)
+            ozone_good = xr.full_like(species_flags.Cloud_Bit_1, fill_value=True, dtype=bool)
             # Exclusion of all data points with an uncertainty estimate of 300% or greater
             ozone_good = ozone_good.where(xr_data.O3_Err < 30000)
             # Exclusion of all profiles with an uncertainty greater than 10% between 30 and 50 km
@@ -554,29 +601,6 @@ class SAGEIILoaderV700(object):
             ozone_good = ozone_good.where(~no_good)
             xr_data['ozone_filter'] = ~np.isnan(ozone_good)
 
-        if 'background' in self.species:
-            altitude = data['Alt_Grid'][0:140]
-            for key in fields['background']:
-                xr_data.append(xr.DataArray(data[key], coords=[time, altitude],
-                                            dims=['time', 'Alt_Grid'], name=key))
-
-        xr_data = xr.merge(xr_data)
-
-        # if self.enumerate_flags:
-        index_flags = self.convert_index_bit_flags(data)
-        species_flags = self.convert_species_bit_flags(data)
-        xr_data = xr.merge([xr_data, index_flags, species_flags])
-
-        for var in xr_data.keys():
-            if xr_data[var].dtype == 'float32' or 'Err' in var:
-                xr_data[var] = xr_data[var].where(xr_data[var] != data['FillVal'])
-
-        # determine cloud filter for aerosol data
-        cloud_filter = xr.full_like(xr_data.Cloud_Bit_1, fill_value=True, dtype=bool)
-        min_alt = (xr_data.Alt_Grid * (xr_data.Cloud_Bit_1 & xr_data.Cloud_Bit_2)).max(dim='Alt_Grid')
-        cloud_filter = cloud_filter.where(cloud_filter.Alt_Grid > min_alt)
-        xr_data['cloud_filter'] = np.isnan(cloud_filter)
-
         if self.filter_aerosol:
             xr_data['Ext'] = xr_data.Ext.where(~xr_data.cloud_filter)
 
@@ -588,19 +612,96 @@ class SAGEIILoaderV700(object):
             xr_data.drop(['Ext', 'Ext_Err', 'wavelength'])
 
         if self.normalize_percent_error:
-            for var in xr_data.keys():
+            for var in xr_data.variables.keys():
                 if 'Err' in var:  # put error units back into percent
                     xr_data[var] = (xr_data[var] / 100).astype('float32')
 
-        if self.cf_names:
-            xr_data.rename({'Lat': 'latitude',
-                            'Lon': 'longitude',
-                            'Alt_Grid': 'altitude',
-                            'Beta': 'beta_angle',
-                            'Ext': 'extinction',
-                            'Ext_Err': 'extinction_error'})
+        xr_data = self.cf_conventions(xr_data)
 
-        return xr_data
+        if self.return_flags:
+            return xr_data, xr.merge([index_flags, species_flags])
+        else:
+            return xr_data
+
+    def cf_conventions(self, data):
+
+        attrs = {'time': {'standard_name': 'time'},
+                 'Lat': {'standard_name': 'latitude',
+                         'units': 'degrees north'},
+                 'Lon': {'standard_name': 'longitude',
+                         'units': 'degrees east'},
+                 'Alt_Grid': {'units': 'km'},
+                 'wavelength': {'units': 'nm',
+                                'description': 'wavelength at which aerosol extinction is retrieved'},
+                 'O3': {'standard_name': 'number_concentration_of_ozone_molecules_in_air',
+                        'units': 'cm-3'},
+                 'NO2': {'standard_name': 'number_concentration_of_nitrogen_dioxide_molecules_in_air',
+                         'units': 'cm-3'},
+                 'H2O': {'standard_name': 'number_concentration_of_water_vapor_in_air',
+                         'units': 'cm-3'},
+                 'Ext': {'standard_name': 'volume_extinction_coefficient_in_air_due_to_ambient_aerosol_particles',
+                         'units': 'km-1'},
+                 'O3_Err': {'standard_name': 'number_concentration_of_ozone_molecules_in_air_error',
+                            'units': 'percent'},
+                 'NO2_Err': {'standard_name': 'number_concentration_of_nitrogen_dioxide_molecules_in_air_error',
+                             'units': 'percent'},
+                 'H2O_Err': {'standard_name': 'number_concentration_of_water_vapor_in_air_error',
+                             'units': 'percent'},
+                 'Ext_Err': {'standard_name': 'volume_extinction_coefficient_in_air_due_to_ambient_aerosol_particles_error',
+                             'units': 'percent'},
+                 'Duration': {'units': 'seconds',
+                              'description': 'duration of the sunrise/sunset event'},
+                 'Beta': {'units': 'degrees',
+                          'description': 'angle between the satellite orbit plane and the sun'},
+                 'Trop_Height': {'units': 'km'},
+                 'Radius': {'units': 'microns'},
+                 'SurfDen': {'units': 'microns2 cm-3'}}
+
+        for key in attrs.keys():
+            data[key].attrs = attrs[key]
+
+        data.attrs = {'description': 'Retrieved vertical profiles of  aerosol extinction, ozone, '
+                                     'nitrogen dioxide, water vapor, and meteorological profiles from SAGE II '
+                                     'version 7.00',
+                      'publication reference': 'Damadeo, R. P., Zawodny, J. M., Thomason, L. W., & Iyer, N. (2013). '
+                                               'SAGE version 7.0 algorithm: application to SAGE II. Atmospheric '
+                                               'Measurement Techniques, 6(12), 3539-3561.',
+                      'title': 'SAGE II version 7.00',
+                      'date_created': pd.Timestamp.now().strftime('%B %d %Y'),
+                      'source_code': 'repository: https://github.com/LandonRieger/pySAGE.git, revision: '
+                                     + git_version().decode('utf-8'),
+                      'version': 'v1.0.0',
+                      'Conventions': 'CF-1.7'}
+
+        if self.cf_names:
+            names = {'Lat': 'latitude',
+                     'Lon': 'longitude',
+                     'Alt_Grid': 'altitude',
+                     'Beta': 'beta_angle',
+                     'Ext': 'aerosol_extinction',
+                     'Ext_Err': 'aerosol_extinction_error',
+                     'O3': 'ozone',
+                     'O3_Err': 'ozone_error',
+                     'NO2': 'no2',
+                     'NO2_Err': 'no2_error',
+                     'SurfDen': 'surface_area_density',
+                     'SurfDen_Err': 'surface_area_density_error',
+                     'radius': 'effective_radius',
+                     'radius_err': 'effective_radius_error',
+                     'Density': 'air_density',
+                     'Density_Err': 'air_density_error',
+                     'Type_Sat': 'satellite_sunset',
+                     'Type_Tan': 'local_sunset',
+                     'Trop_Height': 'tropopause_altitude',
+                     'Duration': 'event_duration'}
+
+            for key in names.keys():
+                try:
+                    data.rename({key: names[key]}, inplace=True)
+                except ValueError:
+                    pass
+
+        return data
 
     def convert_index_bit_flags(self, data: Dict) -> xr.Dataset:
         """
