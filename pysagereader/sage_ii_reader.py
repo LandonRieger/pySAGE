@@ -75,6 +75,7 @@ class SAGEIILoaderV700(object):
         self.cf_names = cf_names
         self.filter_aerosol = filter_aerosol
         self.filter_ozone = filter_ozone
+        self.normalize_percent_error = True
 
     @staticmethod
     def get_spec_format() -> Dict[str, Tuple[str, int, int]]:
@@ -185,7 +186,8 @@ class SAGEIILoaderV700(object):
 
         # Process tracking and flag info
         info['Dropped'] = ('int32', 930, 4)       # Dropped event flag
-        info['InfVec'] = ('uint32', 930, 4)       # Bit flags relating to processing
+        info['InfVec'] = ('uint32', 930, 4)       # Bit flags relating to processing (
+        # NOTE: readme_sage2_v6.20.txt says InfVec is 16 bit but appears to actually be 32 (also in IDL software)
 
         # Record creation dates and times
         info['Eph_Cre_Date'] = ('int32', 930, 4)  # Record creation date(YYYYMMDD format)
@@ -499,7 +501,7 @@ class SAGEIILoaderV700(object):
             xr_data.append(xr.DataArray(data[key], coords=[time, data['Alt_Grid'][0:140]],
                                         dims=['time', 'Alt_Grid'], name=self.get_name(key)))
 
-        if 'aerosol' in self.species:
+        if 'aerosol' in self.species or self.filter_ozone:  # we need aerosol to filter ozone
             altitude = data['Alt_Grid'][0:80]
             wavel = np.array([386.0, 452.0, 525.0, 1020.0])
             ext = np.array([data['Ext386'], data['Ext452'], data['Ext525'], data['Ext1020']])
@@ -526,6 +528,31 @@ class SAGEIILoaderV700(object):
             for key in fields['ozone']:
                 xr_data.append(xr.DataArray(data[key], coords=[time, altitude],
                                             dims=['time', 'Alt_Grid'], name=self.get_name(key)))
+
+            # add an ozone filter field for convenience
+            ozone_good = xr.full_like(xr_data.Cloud_Bit_1, fill_value=True, dtype=bool)
+            # Exclusion of all data points with an uncertainty estimate of 300% or greater
+            ozone_good = ozone_good.where(xr_data.O3_Err < 30000)
+            # Exclusion of all profiles with an uncertainty greater than 10% between 30 and 50 km
+            no_good = (xr_data.O3_Err > 1000) & (xr_data.Alt_Grid > 30) & (xr_data.Alt_Grid < 50)
+            ozone_good = ozone_good.where(~no_good)
+            # Exclusion of all data points at altitude and below the occurrence of an aerosol extinction value of
+            # greater than 0.006 km^-1
+            # NOTE: the wavelength to use as the filter is not specified in the documentation, so I have chosen the
+            # wavelength with the smallest extinction and therefore the strictest filtering
+            min_alt = (xr_data.Alt_Grid * (xr_data.Ext.sel(wavelength=1020) > 0.006)).max(dim='Alt_Grid')
+            ozone_good = ozone_good.where(xr_data.Alt_Grid > min_alt)
+            # Exclusion of all data points at altitude and below the occurrence of both the 525nm aerosol extinction
+            # value exceeding 0.001 km^-1 and the 525/1020 extinction ratio falling below 1.4
+            min_alt = (xr_data.Alt_Grid * ((xr_data.Ext.sel(wavelength=525) > 0.001) &
+                                           ((xr_data.Ext.sel(wavelength=525) / xr_data.Ext.sel(
+                                               wavelength=1020)) < 1.4))).max(dim='Alt_Grid')
+            ozone_good = ozone_good.where(xr_data.Alt_Grid > min_alt)
+            # Exclusion of all data points below 35km an 200% or larger uncertainty estimate
+            no_good = (xr_data.O3_Err > 20000) & (xr_data.Alt_Grid < 35)
+            ozone_good = ozone_good.where(~no_good)
+            xr_data['ozone_filter'] = ~np.isnan(ozone_good)
+
         if 'background' in self.species:
             altitude = data['Alt_Grid'][0:140]
             for key in fields['background']:
@@ -533,6 +560,36 @@ class SAGEIILoaderV700(object):
                                             dims=['time', 'Alt_Grid'], name=self.get_name(key)))
 
         xr_data = xr.merge(xr_data)
+
+        # if self.enumerate_flags:
+        index_flags = self.convert_index_bit_flags(data)
+        species_flags = self.convert_species_bit_flags(data)
+        xr_data = xr.merge([xr_data, index_flags, species_flags])
+
+        for var in xr_data.keys():
+            if xr_data[var].dtype == 'float32' or 'Err' in var:
+                xr_data[var] = xr_data[var].where(xr_data[var] != data['FillVal'])
+
+        # determine cloud filter for aerosol data
+        cloud_filter = xr.full_like(xr_data.Cloud_Bit_1, fill_value=True, dtype=bool)
+        min_alt = (xr_data.Alt_Grid * (xr_data.Cloud_Bit_1 & xr_data.Cloud_Bit_2)).max(dim='Alt_Grid')
+        cloud_filter = cloud_filter.where(cloud_filter.Alt_Grid > min_alt)
+        xr_data['cloud_filter'] = np.isnan(cloud_filter)
+
+        if self.filter_aerosol:
+            xr_data['Ext'] = xr_data.Ext.where(~xr_data.cloud_filter)
+
+        if self.filter_ozone:
+            xr_data['O3'] = xr_data.O3.where(ozone_good)
+
+        # drop aerosol if not requested
+        if self.filter_ozone and not ('aerosol' in self.species):
+            xr_data.drop(['Ext', 'Ext_Err', 'wavelength'])
+
+        if self.normalize_percent_error:
+            for var in xr_data.keys():
+                if 'Err' in var:  # put error units back into percent
+                    xr_data[var] = (xr_data[var] / 100).astype('float32')
 
         if self.cf_names:
             xr_data.rename({self.get_name('Lat'): 'latitude',
@@ -543,6 +600,96 @@ class SAGEIILoaderV700(object):
                             self.get_name('Ext_Err'): 'extinction_error'})
 
         return xr_data
+
+    def convert_index_bit_flags(self, data: Dict) -> xr.Dataset:
+        """
+        Convert the int32 index flags to a dataset of distinct flags
+
+        :param data:
+            Dictionary of input data as returned by `load_data`
+        :return: Dataset of the index bit flags
+        """
+        flags = dict()
+        flags['pmc_present'] = 0
+        flags['h2o_zero_found'] = 1
+        flags['h2o_slow_convergence'] = 2
+        flags['h2o_ega_failure'] = 3
+        flags['default_nmc_temp_errors'] = 4
+        flags['ch2_aero_model_A'] = 5
+        flags['ch2_aero_model_B'] = 6
+        flags['ch2_new_wavelength'] = 7
+        flags['incomplete_nmc_data'] = 8
+        flags['mirror_model'] = 15
+        flags['twomey_non_conv_rayleigh'] = 19
+        flags['twomey_non_conv_386_Aero'] = 20
+        flags['twomey_non_conv_452_Aero'] = 21
+        flags['twomey_non_conv_525_Aero'] = 22
+        flags['twomey_non_conv_1020_Aero'] = 23
+        flags['twomey_non_conv_NO2'] = 24
+        flags['twomey_non_conv_ozone'] = 25
+        flags['no_shock_correction'] = 30
+
+        f = dict()
+        for key in flags.keys():
+            f[key] = (data['InfVec'] & 2 ** flags[key]) > 0
+
+        xr_data = []
+        time = pd.to_timedelta(data['mjd'], 'D') + pd.Timestamp('1858-11-17')
+        for key in f.keys():
+            xr_data.append(xr.DataArray(f[key], coords=[time], dims=['time'], name=self.get_name(key)))
+
+        return xr.merge(xr_data)
+
+    def convert_species_bit_flags(self, data: Dict) -> xr.Dataset:
+        """
+        Convert the int32 species flags to a dataset of distinct flags
+
+        :param data:
+            Dictionary of input data as returned by `load_data`
+        :return: Dataset of the index bit flags
+        """
+        flags = dict()
+        flags['separation_method'] = [0, 1, 2]
+        flags['one_chan_aerosol_corr'] = 3
+        flags['no_935_aerosol_corr'] = 4
+        flags['Large_1020_OD'] = 5
+        flags['NO2_Extrap'] = 6
+        flags['Water_vapor_ratio'] = [7, 8, 9, 10]
+        flags['Cloud_Bit_1'] = 11
+        flags['Cloud_Bit_2'] = 12
+        flags['No_H2O_Corr'] = 13
+        flags['In_Troposphere'] = 14
+
+        separation_method = dict()
+        separation_method['no_aerosol_method'] = 0
+        separation_method['trans_no_aero_to_five_chan'] = 1
+        separation_method['standard_method'] = 2
+        separation_method['trans_five_chan_to_low'] = 3
+        separation_method['four_chan_method'] = 4
+        separation_method['trans_four_chan_to_three_chan'] = 5
+        separation_method['three_chan_method'] = 6
+        separation_method['extension_method'] = 7
+
+        f = dict()
+        for key in flags.keys():
+            if hasattr(flags[key], '__len__'):
+                if key == 'separation_method':
+                    for k in separation_method.keys():
+                        temp = data['ProfileInfVec'] & np.sum([2 ** k for k in flags[key]])
+                        f[k] = temp == separation_method[k]
+                else:
+                    temp = data['ProfileInfVec'] & np.sum([2 ** k for k in flags[key]])
+                    f[key] = temp >> flags[key][0]  # shift flag to save only significant bits
+            else:
+                f[key] = (data['ProfileInfVec'] & 2 ** flags[key]) > 0
+
+        xr_data = []
+        time = pd.to_timedelta(data['mjd'], 'D') + pd.Timestamp('1858-11-17')
+        for key in f.keys():
+            xr_data.append(xr.DataArray(f[key], coords=[time, data['Alt_Grid'][0:140]], dims=['time', 'Alt_Grid'],
+                                        name=self.get_name(key)))
+
+        return xr.merge(xr_data)
 
     @staticmethod
     def get_name(key):
