@@ -86,49 +86,49 @@ class SAGEIILoaderV700(object):
 
         :return:
             an ordered dictionary of variables provided in the spec file. Each dictionary
-            field contains a tuple with the information (data type, number of data points, data type length in bytes).
+            field contains a tuple with the information (data type, number of data points).
             Ordering is important as the sage ii binary files are read sequentially.
         """
         spec = OrderedDict()
-        spec['Tan_Alt'] = ('float32', 8, 4)       # Subtangent Altitudes(km)
-        spec['Tan_Lat'] = ('float32', 8, 4)       # Subtangent Latitudes @ Tan_Alt(deg)
-        spec['Tan_Lon'] = ('float32', 8, 4)       # Subtangent Longitudes @ Tan_Alt(deg)
+        spec['Tan_Alt'] = ('float32', 8)       # Subtangent Altitudes(km)
+        spec['Tan_Lat'] = ('float32', 8)       # Subtangent Latitudes @ Tan_Alt(deg)
+        spec['Tan_Lon'] = ('float32', 8)       # Subtangent Longitudes @ Tan_Alt(deg)
 
-        spec['NMC_Pres'] = ('float32', 140, 4)    # Gridded Pressure profile(mb)
-        spec['NMC_Temp'] = ('float32', 140, 4)    # Gridded Temperature profile(K)
-        spec['NMC_Dens'] = ('float32', 140, 4)    # Gridded Density profile(cm ^ (-3))
-        spec['NMC_Dens_Err'] = ('int16', 140, 2)  # Error in NMC_Dens( % * 1000)
+        spec['NMC_Pres'] = ('float32', 140)    # Gridded Pressure profile(mb)
+        spec['NMC_Temp'] = ('float32', 140)    # Gridded Temperature profile(K)
+        spec['NMC_Dens'] = ('float32', 140)    # Gridded Density profile(cm ^ (-3))
+        spec['NMC_Dens_Err'] = ('int16', 140)  # Error in NMC_Dens( % * 1000)
 
-        spec['Trop_Height'] = ('float32', 1, 4)   # NMC Tropopause Height(km)
-        spec['Wavelength'] = ('float32', 7, 4)    # Wavelength of each channel(nm)
+        spec['Trop_Height'] = ('float32', 1)   # NMC Tropopause Height(km)
+        spec['Wavelength'] = ('float32', 7)    # Wavelength of each channel(nm)
 
-        spec['O3'] = ('float32', 140, 4)          # O3 Density profile 0 - 70 Km(cm ^ (-3))
-        spec['NO2'] = ('float32', 100, 4)         # NO2 Density profile 0 - 50 Km(cm ^ (-3))
-        spec['H2O'] = ('float32', 100, 4)         # H2O Volume Mixing Ratio 0 - 50 Km(ppp)
+        spec['O3'] = ('float32', 140)          # O3 Density profile 0 - 70 Km(cm ^ (-3))
+        spec['NO2'] = ('float32', 100)         # NO2 Density profile 0 - 50 Km(cm ^ (-3))
+        spec['H2O'] = ('float32', 100)         # H2O Volume Mixing Ratio 0 - 50 Km(ppp)
 
-        spec['Ext386'] = ('float32', 80, 4)       # 386 nm Extinction 0 - 40 Km(1 / km)
-        spec['Ext452'] = ('float32', 80, 4)       # 452 nm Extinction 0 - 40 Km(1 / km)
-        spec['Ext525'] = ('float32', 80, 4)       # 525 nm Extinction 0 - 40 Km(1 / km)
-        spec['Ext1020'] = ('float32', 80, 4)      # 1020 nm Extinction 0 - 40 Km(1 / km)
-        spec['Density'] = ('float32', 140, 4)     # Calculated Density 0 - 70 Km(cm ^ (-3))
-        spec['SurfDen'] = ('float32', 80, 4)      # Aerosol surface area dens 0 - 40 km(um ^ 2 / cm ^ 3)
-        spec['Radius'] = ('float32', 80, 4)       # Aerosol effective radius 0 - 40 km(um)
+        spec['Ext386'] = ('float32', 80)       # 386 nm Extinction 0 - 40 Km(1 / km)
+        spec['Ext452'] = ('float32', 80)       # 452 nm Extinction 0 - 40 Km(1 / km)
+        spec['Ext525'] = ('float32', 80)       # 525 nm Extinction 0 - 40 Km(1 / km)
+        spec['Ext1020'] = ('float32', 80)      # 1020 nm Extinction 0 - 40 Km(1 / km)
+        spec['Density'] = ('float32', 140)     # Calculated Density 0 - 70 Km(cm ^ (-3))
+        spec['SurfDen'] = ('float32', 80)      # Aerosol surface area dens 0 - 40 km(um ^ 2 / cm ^ 3)
+        spec['Radius'] = ('float32', 80)       # Aerosol effective radius 0 - 40 km(um)
 
-        spec['Dens_Mid_Atm'] = ('float32', 70, 4)  # Middle Atmosphere Density(cm ^ (-3))
-        spec['O3_Err'] = ('int16', 140, 2)        # Error in O3 density profile( % * 100)
-        spec['NO2_Err'] = ('int16', 100, 2)       # Error in NO2 density profile( % * 100)
-        spec['H2O_Err'] = ('int16', 100, 2)       # Error in H2O mixing ratio( % * 100)
+        spec['Dens_Mid_Atm'] = ('float32', 70)  # Middle Atmosphere Density(cm ^ (-3))
+        spec['O3_Err'] = ('int16', 140)        # Error in O3 density profile( % * 100)
+        spec['NO2_Err'] = ('int16', 100)       # Error in NO2 density profile( % * 100)
+        spec['H2O_Err'] = ('int16', 100)       # Error in H2O mixing ratio( % * 100)
 
-        spec['Ext386_Err'] = ('int16', 80, 2)     # Error in 386 nm Extinction( % * 100)
-        spec['Ext452_Err'] = ('int16', 80, 2)     # Error in 452 nm Extinction( % * 100)
-        spec['Ext525_Err'] = ('int16', 80, 2)     # Error in 525 nm Extinction( % * 100)
-        spec['Ext1020_Err'] = ('int16', 80, 2)    # Error in 1019 nm Extinction( % * 100)
-        spec['Density_Err'] = ('int16', 140, 2)   # Error in Density( % * 100)
-        spec['SurfDen_Err'] = ('int16', 80, 2)    # Error in surface area dens( % * 100)
-        spec['Radius_Err'] = ('int16', 80, 2)     # Error in aerosol radius( % * 100)
+        spec['Ext386_Err'] = ('int16', 80)     # Error in 386 nm Extinction( % * 100)
+        spec['Ext452_Err'] = ('int16', 80)     # Error in 452 nm Extinction( % * 100)
+        spec['Ext525_Err'] = ('int16', 80)     # Error in 525 nm Extinction( % * 100)
+        spec['Ext1020_Err'] = ('int16', 80)    # Error in 1019 nm Extinction( % * 100)
+        spec['Density_Err'] = ('int16', 140)   # Error in Density( % * 100)
+        spec['SurfDen_Err'] = ('int16', 80)    # Error in surface area dens( % * 100)
+        spec['Radius_Err'] = ('int16', 80)     # Error in aerosol radius( % * 100)
 
-        spec['Dens_Mid_Atm_Err'] = ('int16', 70, 2)  # Error in Middle Atm.Density( % * 100)
-        spec['InfVec'] = ('uint16', 140, 2)       # Informational Bit flags
+        spec['Dens_Mid_Atm_Err'] = ('int16', 70)  # Error in Middle Atm.Density( % * 100)
+        spec['InfVec'] = ('uint16', 140)       # Informational Bit flags
 
         return spec
 
@@ -147,59 +147,59 @@ class SAGEIILoaderV700(object):
 
         info = OrderedDict()
         
-        info['num_prof'] = ('uint32', 1, 4)       # Number of profiles in these files
-        info['Met_Rev_Date'] = ('uint32', 1, 4)   # LaRC Met Model Revision Date(YYYYMMDD)
-        info['Driver_Rev'] = ('char', 8, 1)       # LaRC Driver Version(e.g. 6.20)
-        info['Trans_Rev'] = ('char', 8, 1)        # LaRC Transmission Version
-        info['Inv_Rev'] = ('char', 8, 1)          # LaRC Inversion Version
-        info['Spec_Rev'] = ('char', 8, 1)         # LaRC Inversion Version
-        info['Eph_File_Name'] = ('char', 32, 1)   # Ephemeris data file name
-        info['Met_File_Name'] = ('char', 32, 1)   # Meteorological data file name
-        info['Ref_File_Name'] = ('char', 32, 1)   # Refraction data file name
-        info['Tran_File_Name'] = ('char', 32, 1)  # Transmission data file name
-        info['Spec_File_Name'] = ('char', 32, 1)  # Species profile file name
-        info['FillVal'] = ('float32', 1, 4)       # Fill value
+        info['num_prof'] = ('uint32', 1)       # Number of profiles in these files
+        info['Met_Rev_Date'] = ('uint32', 1)   # LaRC Met Model Revision Date(YYYYMMDD)
+        info['Driver_Rev'] = ('S1', 8)       # LaRC Driver Version(e.g. 6.20)
+        info['Trans_Rev'] = ('S1', 8)        # LaRC Transmission Version
+        info['Inv_Rev'] = ('S1', 8)          # LaRC Inversion Version
+        info['Spec_Rev'] = ('S1', 8)         # LaRC Inversion Version
+        info['Eph_File_Name'] = ('S1', 32)   # Ephemeris data file name
+        info['Met_File_Name'] = ('S1', 32)   # Meteorological data file name
+        info['Ref_File_Name'] = ('S1', 32)   # Refraction data file name
+        info['Tran_File_Name'] = ('S1', 32)  # Transmission data file name
+        info['Spec_File_Name'] = ('S1', 32)  # Species profile file name
+        info['FillVal'] = ('float32', 1)       # Fill value
 
         # Altitude grid and range info
-        info['Grid_Size'] = ('float32', 1, 4)     # Altitude grid spacing(0.5 km)
-        info['Alt_Grid'] = ('float32', 200, 4)    # Geometric altitudes(0.5, 1.0, ..., 100.0 km)
-        info['Alt_Mid_Atm'] = ('float32', 70, 4)  # Middle atmosphere geometric altitudes
-        info['Range_Trans'] = ('float32', 2, 4)   # Transmission min & max altitudes[0.5, 100.]
-        info['Range_O3'] = ('float32', 2, 4)      # Ozone min & max altitudes[0.5, 70.0]
-        info['Range_NO2'] = ('float32', 2, 4)     # NO2 min & max altitudes[0.5, 50.0]
-        info['Range_H2O'] = ('float32', 2, 4)     # Water vapor min & max altitudes[0.5, 50.0]
-        info['Range_Ext'] = ('float32', 2, 4)     # Aerosol extinction min & max altitudes[0.5, 40.0]
-        info['Range_Dens'] = ('float32', 2, 4)    # Density min & max altitudes[0.5, 70.0]
-        info['Spare'] = ('float32', 2, 4)         #
+        info['Grid_Size'] = ('float32', 1)     # Altitude grid spacing(0.5 km)
+        info['Alt_Grid'] = ('float32', 200)    # Geometric altitudes(0.5, 1.0, ..., 100.0 km)
+        info['Alt_Mid_Atm'] = ('float32', 70)  # Middle atmosphere geometric altitudes
+        info['Range_Trans'] = ('float32', 2)   # Transmission min & max altitudes[0.5, 100.]
+        info['Range_O3'] = ('float32', 2)      # Ozone min & max altitudes[0.5, 70.0]
+        info['Range_NO2'] = ('float32', 2)     # NO2 min & max altitudes[0.5, 50.0]
+        info['Range_H2O'] = ('float32', 2)     # Water vapor min & max altitudes[0.5, 50.0]
+        info['Range_Ext'] = ('float32', 2)     # Aerosol extinction min & max altitudes[0.5, 40.0]
+        info['Range_Dens'] = ('float32', 2)    # Density min & max altitudes[0.5, 70.0]
+        info['Spare'] = ('float32', 2)         #
 
         # Event specific info useful for data subsetting
-        info['YYYYMMDD'] = ('int32', 930, 4)      # Event date at 20km subtangent point
-        info['Event_Num'] = ('int32', 930, 4)     # Event number
-        info['HHMMSS'] = ('int32', 930, 4)        # Event time at 20km
-        info['Day_Frac'] = ('float32', 930, 4)    # Time of year(DDD.frac) at 20 km
-        info['Lat'] = ('float32', 930, 4)         # Subtangent latitude at 20 km(-90, +90)
-        info['Lon'] = ('float32', 930, 4)         # Subtangent longitude at 20 km(-180, +180)
-        info['Beta'] = ('float32', 930, 4)        # Spacecraft beta angle(deg)
-        info['Duration'] = ('float32', 930, 4)    # Duration of event(sec)
-        info['Type_Sat'] = ('int16', 930, 2)      # Event Type Instrument(0 = SR, 1 = SS)
-        info['Type_Tan'] = ('int16', 930, 2)      # Event Type Local(0 = SR, 1 = SS)
+        info['YYYYMMDD'] = ('int32', 930)      # Event date at 20km subtangent point
+        info['Event_Num'] = ('int32', 930)     # Event number
+        info['HHMMSS'] = ('int32', 930)        # Event time at 20km
+        info['Day_Frac'] = ('float32', 930)    # Time of year(DDD.frac) at 20 km
+        info['Lat'] = ('float32', 930)         # Subtangent latitude at 20 km(-90, +90)
+        info['Lon'] = ('float32', 930)         # Subtangent longitude at 20 km(-180, +180)
+        info['Beta'] = ('float32', 930)        # Spacecraft beta angle(deg)
+        info['Duration'] = ('float32', 930)    # Duration of event(sec)
+        info['Type_Sat'] = ('int16', 930)      # Event Type Instrument(0 = SR, 1 = SS)
+        info['Type_Tan'] = ('int16', 930)      # Event Type Local(0 = SR, 1 = SS)
 
         # Process tracking and flag info
-        info['Dropped'] = ('int32', 930, 4)       # Dropped event flag
-        info['InfVec'] = ('uint32', 930, 4)       # Bit flags relating to processing (
+        info['Dropped'] = ('int32', 930)       # Dropped event flag
+        info['InfVec'] = ('uint32', 930)       # Bit flags relating to processing (
         # NOTE: readme_sage2_v6.20.txt says InfVec is 16 bit but appears to actually be 32 (also in IDL software)
 
         # Record creation dates and times
-        info['Eph_Cre_Date'] = ('int32', 930, 4)  # Record creation date(YYYYMMDD format)
-        info['Eph_Cre_Time'] = ('int32', 930, 4)  # Record creation time(HHMMSS format)
-        info['Met_Cre_Date'] = ('int32', 930, 4)  # Record creation date(YYYYMMDD format)
-        info['Met_Cre_Time'] = ('int32', 930, 4)  # Record creation time(HHMMSS format)
-        info['Ref_Cre_Date'] = ('int32', 930, 4)  # Record creation date(YYYYMMDD format)
-        info['Ref_Cre_Time'] = ('int32', 930, 4)  # Record creation time(HHMMSS format)
-        info['Tran_Cre_Date'] = ('int32', 930, 4)  # Record creation date(YYYYMMDD format)
-        info['Tran_Cre_Time'] = ('int32', 930, 4)  # Record creation time(HHMMSS format)
-        info['Spec_Cre_Date'] = ('int32', 930, 4)  # Record creation date(YYYYMMDD format)
-        info['Spec_Cre_Time'] = ('int32', 930, 4)  # Record creation time(HHMMSS format)
+        info['Eph_Cre_Date'] = ('int32', 930)  # Record creation date(YYYYMMDD format)
+        info['Eph_Cre_Time'] = ('int32', 930)  # Record creation time(HHMMSS format)
+        info['Met_Cre_Date'] = ('int32', 930)  # Record creation date(YYYYMMDD format)
+        info['Met_Cre_Time'] = ('int32', 930)  # Record creation time(HHMMSS format)
+        info['Ref_Cre_Date'] = ('int32', 930)  # Record creation date(YYYYMMDD format)
+        info['Ref_Cre_Time'] = ('int32', 930)  # Record creation time(HHMMSS format)
+        info['Tran_Cre_Date'] = ('int32', 930)  # Record creation date(YYYYMMDD format)
+        info['Tran_Cre_Time'] = ('int32', 930)  # Record creation time(HHMMSS format)
+        info['Spec_Cre_Date'] = ('int32', 930)  # Record creation date(YYYYMMDD format)
+        info['Spec_Cre_Time'] = ('int32', 930)  # Record creation time(HHMMSS format)
 
         return info
 
@@ -270,9 +270,10 @@ class SAGEIILoaderV700(object):
         bidx = 0
         for p in range(num_profiles):
             for key in file_format.keys():
-                data[p][key] = copy.copy(np.frombuffer(buffer[bidx:bidx+file_format[key][2]*file_format[key][1]],
+                nbytes = np.dtype(file_format[key][0]).itemsize * file_format[key][1]
+                data[p][key] = copy.copy(np.frombuffer(buffer[bidx:bidx+nbytes],
                                                        dtype=file_format[key][0]))
-                bidx += file_format[key][2]*file_format[key][1]
+                bidx += nbytes
 
         return data
 
@@ -296,14 +297,14 @@ class SAGEIILoaderV700(object):
         # load the data from file into a list
         bidx = 0
         for key in file_format.keys():
-            if file_format[key][0] == 'char':
-                data[key] = copy.copy(buffer[bidx:bidx + file_format[key][2] * file_format[key][1]].decode('utf-8'))
+            nbytes = np.dtype(file_format[key][0]).itemsize * file_format[key][1]
+            if file_format[key][0] == 'S1':
+                data[key] = copy.copy(buffer[bidx:bidx + nbytes].decode('utf-8'))
             else:
-                data[key] = copy.copy(np.frombuffer(buffer[bidx:bidx + file_format[key][2] * file_format[key][1]],
-                                                    dtype=file_format[key][0]))
+                data[key] = copy.copy(np.frombuffer(buffer[bidx:bidx + nbytes], dtype=file_format[key][0]))
                 if len(data[key]) == 1:
                     data[key] = data[key][0]
-            bidx += file_format[key][2] * file_format[key][1]
+            bidx += nbytes
 
         # make a more useable time field
         date_str = []
@@ -492,14 +493,14 @@ class SAGEIILoaderV700(object):
         time = pd.to_timedelta(data['mjd'], 'D') + pd.Timestamp('1858-11-17')
 
         for key in fields['general']:
-            xr_data.append(xr.DataArray(data[key], coords=[time], dims=['time'], name=self.get_name(key)))
+            xr_data.append(xr.DataArray(data[key], coords=[time], dims=['time'], name=key))
 
         for key in fields['flags']:
-            xr_data.append(xr.DataArray(data[key], coords=[time], dims=['time'], name=self.get_name(key)))
+            xr_data.append(xr.DataArray(data[key], coords=[time], dims=['time'], name=key))
 
         for key in fields['profile_flags']:
             xr_data.append(xr.DataArray(data[key], coords=[time, data['Alt_Grid'][0:140]],
-                                        dims=['time', 'Alt_Grid'], name=self.get_name(key)))
+                                        dims=['time', 'Alt_Grid'], name=key))
 
         if 'aerosol' in self.species or self.filter_ozone:  # we need aerosol to filter ozone
             altitude = data['Alt_Grid'][0:80]
@@ -512,22 +513,22 @@ class SAGEIILoaderV700(object):
                                         dims=['wavelength', 'time', 'Alt_Grid'], name='Ext_Err'))
             for key in fields['particle_size']:
                 xr_data.append(xr.DataArray(data[key], coords=[time, altitude],
-                                            dims=['time', 'Alt_Grid'], name=self.get_name(key)))
+                                            dims=['time', 'Alt_Grid'], name=key))
         if 'no2' in self.species:
             altitude = data['Alt_Grid'][0:100]
             for key in fields['no2']:
                 xr_data.append(xr.DataArray(data[key], coords=[time, altitude],
-                                            dims=['time', 'Alt_Grid'], name=self.get_name(key)))
+                                            dims=['time', 'Alt_Grid'], name=key))
         if 'h2o' in self.species:
             altitude = data['Alt_Grid'][0:100]
             for key in fields['h2o']:
                 xr_data.append(xr.DataArray(data[key], coords=[time, altitude],
-                                            dims=['time', 'Alt_Grid'], name=self.get_name(key)))
+                                            dims=['time', 'Alt_Grid'], name=key))
         if any(i in ['ozone', 'o3'] for i in self.species):
             altitude = data['Alt_Grid'][0:140]
             for key in fields['ozone']:
                 xr_data.append(xr.DataArray(data[key], coords=[time, altitude],
-                                            dims=['time', 'Alt_Grid'], name=self.get_name(key)))
+                                            dims=['time', 'Alt_Grid'], name=key))
 
             # add an ozone filter field for convenience
             ozone_good = xr.full_like(xr_data.Cloud_Bit_1, fill_value=True, dtype=bool)
@@ -557,7 +558,7 @@ class SAGEIILoaderV700(object):
             altitude = data['Alt_Grid'][0:140]
             for key in fields['background']:
                 xr_data.append(xr.DataArray(data[key], coords=[time, altitude],
-                                            dims=['time', 'Alt_Grid'], name=self.get_name(key)))
+                                            dims=['time', 'Alt_Grid'], name=key))
 
         xr_data = xr.merge(xr_data)
 
@@ -592,12 +593,12 @@ class SAGEIILoaderV700(object):
                     xr_data[var] = (xr_data[var] / 100).astype('float32')
 
         if self.cf_names:
-            xr_data.rename({self.get_name('Lat'): 'latitude',
-                            self.get_name('Lon'): 'longitude',
-                            self.get_name('Alt_Grid'): 'altitude',
-                            self.get_name('Beta'): 'beta_angle',
-                            self.get_name('Ext'): 'extinction',
-                            self.get_name('Ext_Err'): 'extinction_error'})
+            xr_data.rename({'Lat': 'latitude',
+                            'Lon': 'longitude',
+                            'Alt_Grid': 'altitude',
+                            'Beta': 'beta_angle',
+                            'Ext': 'extinction',
+                            'Ext_Err': 'extinction_error'})
 
         return xr_data
 
