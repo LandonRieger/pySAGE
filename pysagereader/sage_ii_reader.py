@@ -25,6 +25,17 @@ class SAGEIILoaderV700(object):
         is not available. `species` is only used in `xarray` is set as the `output_data` format, otherwise it has no
         effect.
     :param bool cf_names: If True then CF-1.7 naming conventions are used for the output_data when `xarray` is selected.
+    :param bool filter_aerosol: filter the aerosol using the cloud flag
+        **only applied if `xarray` is selected as the output type**
+    :param bool filter_ozone: filter the ozone using the criteria recommended in the release notes
+        **only applied if `xarray` is selected as the output type**
+
+        * Exclusion of all data points with an uncertainty estimate of 300% or greater
+        * Exclusion of all profiles with an uncertainty greater than 10% between 30 and 50 km
+        * Exclusion of all data points at altitude and below the occurrence of an aerosol extinction value of greater than 0.006 km^-1
+        * Exclusion of all data points at altitude and below the occurrence of both the 525nm aerosol extinction value exceeding 0.001 km^-1 and the 525/1020 extinction ratio falling below 1.4
+        * Exclusion of all data points below 35km an 200% or larger uncertainty estimate
+
 
     Example
     -------
@@ -41,7 +52,7 @@ class SAGEIILoaderV700(object):
 
     """
     def __init__(self, output_format='xarray', species=('aerosol', 'h2o', 'no2', 'ozone', 'background'),
-                 cf_names=False):
+                 cf_names=False, filter_aerosol=False, filter_ozone=False):
 
         self.data_folder = ''
         self.version = '7.00'
@@ -55,6 +66,8 @@ class SAGEIILoaderV700(object):
         self.output_format = output_format
         self.species = [s.lower() for s in species]
         self.cf_names = cf_names
+        self.filter_aerosol = filter_aerosol
+        self.filter_ozone = filter_ozone
 
     @staticmethod
     def get_spec_format():
@@ -63,11 +76,10 @@ class SAGEIILoaderV700(object):
 
         used for reading the binary data format
 
-        :return
-        spec (Ordered Dictionary)
-        an ordered dictionary of variables provided in the spec file. Each dictionary
-        field contains a tuple with the information (data type, number of data points, data type length in bytes).
-        Ordering is important as the sage ii binary files are read sequentially.
+        :return:
+            an ordered dictionary of variables provided in the spec file. Each dictionary
+            field contains a tuple with the information (data type, number of data points, data type length in bytes).
+            Ordering is important as the sage ii binary files are read sequentially.
         """
         spec = OrderedDict()
         spec['Tan_Alt'] = ('float32', 8, 4)       # Subtangent Altitudes(km)
@@ -119,11 +131,10 @@ class SAGEIILoaderV700(object):
 
         used for reading the binary data format
 
-        :return
-        info (dictionary)
-        an ordered dictionary of variables provided in the index file. Each dictionary
-        field contains a tuple with the information (data type, length). Ordering is
-        important as the sage ii binary files are read sequentially.
+        :return:
+            an ordered dictionary of variables provided in the index file. Each dictionary
+            field contains a tuple with the information (data type, length). Ordering is
+            important as the sage ii binary files are read sequentially.
         """
 
         info = OrderedDict()
@@ -187,12 +198,13 @@ class SAGEIILoaderV700(object):
         """
         Returns the spec filename given a year and month
 
-        :param year: (int)
-        year of the data that will be loaded
-        :param month: (int)
-        month of the data that will be loaded
+        :param int year:
+            year of the data that will be loaded
+        :param int month:
+            month of the data that will be loaded
+
         :return:
-        filename of the spec file where the data is stored
+            filename of the spec file where the data is stored
         """
         file = os.path.join(self.data_folder,
                             self.spec_file + str(int(year)) + str(int(month)).zfill(2) + '.' + self.version)
@@ -206,12 +218,13 @@ class SAGEIILoaderV700(object):
         """
         Returns the index filename given a year and month
 
-        :param year: (int)
-        year of the data that will be loaded
-        :param month: (int)
-        month of the data that will be loaded
+        :param int year:
+            year of the data that will be loaded
+        :param int month:
+            month of the data that will be loaded
+
         :return:
-        filename of the index file where the data is stored
+            filename of the index file where the data is stored
         """
 
         file = os.path.join(self.data_folder,
@@ -225,12 +238,13 @@ class SAGEIILoaderV700(object):
     def read_spec_file(self, file, num_profiles):
         """
 
-        :param file: (str)
-        name of the spec file to be read
-        :param num_profiles: (int)
-        number of profiles to read from the spec file (usually determined from the index file)
-        :return: list
-        list of dictionaries containing the spec data. Each list is one event
+        :param str file:
+            name of the spec file to be read
+        :param int num_profiles:
+            number of profiles to read from the spec file (usually determined from the index file)
+
+        :return:
+            list of dictionaries containing the spec data. Each list is one event
         """
 
         # load the file into the buffer
@@ -257,10 +271,11 @@ class SAGEIILoaderV700(object):
         """
         Read the binary file into a python data structure
 
-        :param file: (str)
-        filename to be read
-        :return: data: (dictionary)
-        contains the data from the file
+        :param str file:
+            filename to be read
+
+        :return:
+            data from the file
         """
 
         file_format = self.index_format
@@ -308,21 +323,21 @@ class SAGEIILoaderV700(object):
         """
         Load the SAGE II data for the specified dates and locations.
 
-        :param min_date: (str)
-        start date where data will be loaded in iso format, eg: '2004-1-1'
-        :param max_date: (str)
-        end date where data will be loaded in iso format, eg: '2004-1-1'
-        :param min_lat: (optional, float)
-        minimum latitude
-        :param max_lat: (optional, float)
-        maximum latitude
-        :param min_lon: (optional, float)
-        minimum longitude
-        :param max_lon: (optional, float)
-        maximum longitude
+        :param str min_date:
+            start date where data will be loaded in iso format, eg: '2004-1-1'
+        :param str max_date:
+            end date where data will be loaded in iso format, eg: '2004-1-1'
+        :param float min_lat:
+            minimum latitude (optional)
+        :param float max_lat:
+            maximum latitude (optional)
+        :param float min_lon:
+            minimum longitude (optional)
+        :param float max_lon:
+            maximum longitude (optional)
+
         :return:
-        data (dict)
-        Variables are returned as numpy arrays (1 or 2 dimensional depending on the variable)
+            Variables are returned as numpy arrays (1 or 2 dimensional depending on the variable)
         """
         min_time = Time(min_date, format='iso')
         max_time = Time(max_date, format='iso')
@@ -403,22 +418,23 @@ class SAGEIILoaderV700(object):
         """
         Removes any data from the dictionary that does not meet the specified time, latitude and longitude requirements.
 
-        :param data: (dictionary)
-        dictionary of sage ii data. Must have the fields 'mjd', 'Lat' and 'Lon'. All others are optional
-        :param min_date: (str)
-        start date in iso format
-        :param max_date: (str)
-        end date in iso format
-        :param min_lat: (float)
-        minimum latitude
-        :param max_lat: (float)
-        maximum latitude
-        :param min_lon: (float)
-        minimum longitude
-        :param max_lon: (float)
-        maximum longitude
+        :param dict() data:
+            dictionary of sage ii data. Must have the fields 'mjd', 'Lat' and 'Lon'. All others are optional
+        :param str min_date:
+            start date in iso format
+        :param str max_date:
+            end date in iso format
+        :param str min_lat:
+            minimum latitude
+        :param str max_lat:
+            maximum latitude
+        :param str min_lon:
+            minimum longitude
+        :param str max_lon:
+            maximum longitude
+
         :return:
-        returns the dictionary with only data in the valid latitude, longitude and time range
+            returns the dictionary with only data in the valid latitude, longitude and time range
         """
         min_mjd = Time(min_date, format='iso').mjd
         max_mjd = Time(max_date, format='iso').mjd
@@ -445,8 +461,9 @@ class SAGEIILoaderV700(object):
         fields['ozone'] = ['O3', 'O3_Err']
         fields['no2'] = ['NO2', 'NO2_Err']
         fields['h2o'] = ['H2O', 'H2O_Err']
-        fields['aerosol'] = ['Ext386', 'Ext452', 'Ext525', 'Ext1020_Err', 'Ext386_Err', 'Ext452_Err', 'Ext525_Err',
-                             'Ext1020_Err', 'SurfDen', 'Radius', 'SurfDen_Err', 'Radius_Err']
+        fields['aerosol'] = ['Ext386', 'Ext452', 'Ext525', 'Ext1020', 'Ext386_Err', 'Ext452_Err', 'Ext525_Err',
+                             'Ext1020_Err']
+        fields['particle_size'] = ['SurfDen', 'Radius', 'SurfDen_Err', 'Radius_Err']
         fields['general'] = ['YYYYMMDD', 'Event_Num', 'HHMMSS', 'Day_Frac', 'Lat', 'Lon', 'Beta', 'Duration',
                              'Type_Sat', 'Type_Tan']
         fields['flags'] = ['InfVec', 'Dropped']
@@ -463,29 +480,44 @@ class SAGEIILoaderV700(object):
 
         for key in fields['profile_flags']:
             xr_data.append(xr.DataArray(data[key], coords=[time, data['Alt_Grid']],
-                                        dims=['time', 'altitude'], name=key))
+                                        dims=['time', 'Alt_Grid'], name=key))
 
         if 'aerosol' in self.species:
             altitude = data['Alt_Grid'][0:80]
-            for key in fields['aerosol']:
-                xr_data.append(xr.DataArray(data[key], coords=[time, altitude], dims=['time', 'altitude'], name=key))
+            wavel = np.array([386.0, 452.0, 525.0, 1020.0])
+            ext = np.array([data['Ext386'], data['Ext452'], data['Ext525'], data['Ext1020']])
+            xr_data.append(xr.DataArray(ext, coords=[time, altitude, wavel],
+                                        dims=['time', 'Alt_Grid', 'wavelength'], name='Ext'))
+            ext = np.array([data['Ext386_Err'], data['Ext452_Err'], data['Ext525_Err'], data['Ext1020_Err']])
+            xr_data.append(xr.DataArray(ext, coords=[time, altitude, wavel],
+                                        dims=['time', 'Alt_Grid', 'wavelength'], name='Ext_Err'))
+            for key in fields['particle_size']:
+                xr_data.append(xr.DataArray(data[key], coords=[time, altitude], dims=['time', 'Alt_Grid'], name=key))
         if 'no2' in self.species:
             altitude = data['Alt_Grid'][0:100]
             for key in fields['no2']:
-                xr_data.append(xr.DataArray(data[key], coords=[time, altitude], dims=['time', 'altitude'], name=key))
+                xr_data.append(xr.DataArray(data[key], coords=[time, altitude], dims=['time', 'Alt_Grid'], name=key))
         if 'h2o' in self.species:
             altitude = data['Alt_Grid'][0:100]
             for key in fields['h2o']:
-                xr_data.append(xr.DataArray(data[key], coords=[time, altitude], dims=['time', 'altitude'], name=key))
+                xr_data.append(xr.DataArray(data[key], coords=[time, altitude], dims=['time', 'Alt_Grid'], name=key))
         if any(i in ['ozone', 'o3'] for i in self.species):
             altitude = data['Alt_Grid'][0:140]
             for key in fields['ozone']:
-                xr_data.append(xr.DataArray(data[key], coords=[time, altitude], dims=['time', 'altitude'], name=key))
+                xr_data.append(xr.DataArray(data[key], coords=[time, altitude], dims=['time', 'Alt_Grid'], name=key))
         if 'background' in self.species:
             altitude = data['Alt_Grid'][0:140]
             for key in fields['background']:
-                xr_data.append(xr.DataArray(data[key], coords=[time, altitude], dims=['time', 'altitude'], name=key))
+                xr_data.append(xr.DataArray(data[key], coords=[time, altitude], dims=['time', 'Alt_Grid'], name=key))
 
         xr_data = xr.merge(xr_data)
+
+        if self.cf_names:
+            xr_data.rename({'Lat': 'latitude',
+                            'Lon': 'longitude',
+                            'Alt_Grid': 'altitude',
+                            'Beta': 'beta_angle',
+                            'Ext': 'extinction',
+                            'Ext_Err': 'extinction_error'})
 
         return xr_data
