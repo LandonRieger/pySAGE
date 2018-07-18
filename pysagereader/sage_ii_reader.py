@@ -6,55 +6,58 @@ from collections import OrderedDict
 from astropy.time import Time
 import logging
 import copy
+from typing import List, Dict, Union
 
 
 class SAGEIILoaderV700(object):
-    """
-    Class designed to load the v7.00 SAGE II spec and index files provided by NASA ADSC into python
 
-    Data files must be accessible by the users machine, and can be downloaded from:
-    https://eosweb.larc.nasa.gov/project/sage2/sage2_v7_table
+    def __init__(self, output_format: str='xarray', species: List[str]=('aerosol', 'h2o', 'no2', 'ozone', 'background'),
+                 cf_names: bool=False, filter_aerosol: bool=False, filter_ozone: bool=False):
+        """
+        Class designed to load the v7.00 SAGE II spec and index files provided by NASA ADSC into python
 
-    Parameters
-    ----------
+        Data files must be accessible by the users machine, and can be downloaded from:
+        https://eosweb.larc.nasa.gov/project/sage2/sage2_v7_table
 
-    :param str output_format: format for the output data. If `xarray` the output is returned as an `xarray.Dataset`.
-        If None the output is returned as a dictionary of numpy arrays.
-    :param List(str) species: Species to be returned in the output data. If None all species are returned. Options are
-        `aerosol`, `ozone`, `h2o`, and `no2`. If more than one species is returned fields will be NaN-padded where data
-        is not available. `species` is only used in `xarray` is set as the `output_data` format, otherwise it has no
-        effect.
-    :param bool cf_names: If True then CF-1.7 naming conventions are used for the output_data when `xarray` is selected.
-    :param bool filter_aerosol: filter the aerosol using the cloud flag
-        **only applied if `xarray` is selected as the output type**
-    :param bool filter_ozone: filter the ozone using the criteria recommended in the release notes
-        **only applied if `xarray` is selected as the output type**
+        Parameters
+        ----------
 
-        * Exclusion of all data points with an uncertainty estimate of 300% or greater
-        * Exclusion of all profiles with an uncertainty greater than 10% between 30 and 50 km
-        * Exclusion of all data points at altitude and below the occurrence of an aerosol extinction value of greater than 0.006 km^-1
-        * Exclusion of all data points at altitude and below the occurrence of both the 525nm aerosol extinction value exceeding 0.001 km^-1 and the 525/1020 extinction ratio falling below 1.4
-        * Exclusion of all data points below 35km an 200% or larger uncertainty estimate
+        :param output_format: format for the output data. If `xarray` the output is returned as an `xarray.Dataset`.
+            If None the output is returned as a dictionary of numpy arrays.
+        :param species: Species to be returned in the output data. If None all species are returned. Options are
+            `aerosol`, `ozone`, `h2o`, and `no2`. If more than one species is returned fields will be NaN-padded
+            where data is not available. `species` is only used in `xarray` is set as the `output_data` format,
+            otherwise it has no effect.
+        :param cf_names: If True then CF-1.7 naming conventions are used for the output_data when `xarray` is selected.
+        :param filter_aerosol: filter the aerosol using the cloud flag
+            **only applied if `xarray` is selected as the output type**
+        :param filter_ozone: filter the ozone using the criteria recommended in the release notes
+            **only applied if `xarray` is selected as the output type**
+
+            * Exclusion of all data points with an uncertainty estimate of 300% or greater
+            * Exclusion of all profiles with an uncertainty greater than 10% between 30 and 50 km
+            * Exclusion of all data points at altitude and below the occurrence of an aerosol extinction value of
+              greater than 0.006 km^-1
+            * Exclusion of all data points at altitude and below the occurrence of both the 525nm aerosol extinction
+              value exceeding 0.001 km^-1 and the 525/1020 extinction ratio falling below 1.4
+            * Exclusion of all data points below 35km an 200% or larger uncertainty estimate
 
 
-    Example
-    -------
+        Example
+        -------
 
-    >>> sage = SAGEIILoaderV700()
-    >>> sage.data_folder = 'path/to/data'
-    >>> data = sage.load_data('2004-1-1','2004-5-1')
+        >>> sage = SAGEIILoaderV700()
+        >>> sage.data_folder = 'path/to/data'
+        >>> data = sage.load_data('2004-1-1','2004-5-1')
 
-    In addition to the sage ii fields reported in the files, two additional time fields are provided
-    to allow for easier subsetting of the data.
+        In addition to the sage ii fields reported in the files, two additional time fields are provided
+        to allow for easier subsetting of the data.
 
-    `data['mjd']` is a numpy array containing the modified julian dates of each scan
-    `date['time']` is an astropy.time object containing the times of each scan
+        `data['mjd']` is a numpy array containing the modified julian dates of each scan
+        `date['time']` is an astropy.time object containing the times of each scan
 
-    """
-    def __init__(self, output_format='xarray', species=('aerosol', 'h2o', 'no2', 'ozone', 'background'),
-                 cf_names=False, filter_aerosol=False, filter_ozone=False):
-
-        self.data_folder = ''
+        """
+        self.data_folder = ''  # Type: str
         self.version = '7.00'
         self.index_file = 'SAGE_II_INDEX_'
         self.spec_file = 'SAGE_II_SPEC_'
@@ -70,7 +73,7 @@ class SAGEIILoaderV700(object):
         self.filter_ozone = filter_ozone
 
     @staticmethod
-    def get_spec_format():
+    def get_spec_format() -> OrderedDict[str: (str, int, int)]:
         """
         spec format taken from sg2_specinfo.pro provided in the v7.00 download
 
@@ -125,7 +128,7 @@ class SAGEIILoaderV700(object):
         return spec
 
     @staticmethod
-    def get_index_format():
+    def get_index_format() -> OrderedDict[str: (str, int, int)]:
         """
         index format taken from sg2_indexinfo.pro provided in the v7.00 download
 
@@ -194,13 +197,13 @@ class SAGEIILoaderV700(object):
 
         return info
 
-    def get_spec_filename(self, year, month):
+    def get_spec_filename(self, year: int, month: int) -> str:
         """
         Returns the spec filename given a year and month
 
-        :param int year:
+        :param year:
             year of the data that will be loaded
-        :param int month:
+        :param month:
             month of the data that will be loaded
 
         :return:
@@ -214,13 +217,13 @@ class SAGEIILoaderV700(object):
 
         return file
 
-    def get_index_filename(self, year, month):
+    def get_index_filename(self, year: int, month: int) -> str:
         """
         Returns the index filename given a year and month
 
-        :param int year:
+        :param year:
             year of the data that will be loaded
-        :param int month:
+        :param month:
             month of the data that will be loaded
 
         :return:
@@ -235,12 +238,12 @@ class SAGEIILoaderV700(object):
 
         return file
 
-    def read_spec_file(self, file, num_profiles):
+    def read_spec_file(self, file: str, num_profiles: int) -> List[Dict]:
         """
 
-        :param str file:
+        :param file:
             name of the spec file to be read
-        :param int num_profiles:
+        :param num_profiles:
             number of profiles to read from the spec file (usually determined from the index file)
 
         :return:
@@ -267,11 +270,11 @@ class SAGEIILoaderV700(object):
 
         return data
 
-    def read_index_file(self, file):
+    def read_index_file(self, file: str) -> Dict:
         """
         Read the binary file into a python data structure
 
-        :param str file:
+        :param file:
             filename to be read
 
         :return:
@@ -319,21 +322,23 @@ class SAGEIILoaderV700(object):
 
         return data
 
-    def load_data(self, min_date, max_date, min_lat=-90, max_lat=90, min_lon=-180, max_lon=360):
+    def load_data(self, min_date: str, max_date: str,
+                  min_lat: float=-90, max_lat: float=90,
+                  min_lon: float=-180, max_lon: float=360) -> Union[Dict, xr.Dataset]:
         """
         Load the SAGE II data for the specified dates and locations.
 
-        :param str min_date:
+        :param min_date:
             start date where data will be loaded in iso format, eg: '2004-1-1'
-        :param str max_date:
+        :param max_date:
             end date where data will be loaded in iso format, eg: '2004-1-1'
-        :param float min_lat:
+        :param min_lat:
             minimum latitude (optional)
-        :param float max_lat:
+        :param max_lat:
             maximum latitude (optional)
-        :param float min_lon:
+        :param min_lon:
             minimum longitude (optional)
-        :param float max_lon:
+        :param max_lon:
             maximum longitude (optional)
 
         :return:
@@ -414,23 +419,25 @@ class SAGEIILoaderV700(object):
         return data
 
     @staticmethod
-    def subset_data(data, min_date, max_date, min_lat, max_lat, min_lon, max_lon):
+    def subset_data(data: Dict, min_date: str, max_date: str,
+                    min_lat: float, max_lat: float,
+                    min_lon: float, max_lon: float) -> Dict:
         """
         Removes any data from the dictionary that does not meet the specified time, latitude and longitude requirements.
 
-        :param dict() data:
+        :param data:
             dictionary of sage ii data. Must have the fields 'mjd', 'Lat' and 'Lon'. All others are optional
-        :param str min_date:
+        :param min_date:
             start date in iso format
-        :param str max_date:
+        :param max_date:
             end date in iso format
-        :param str min_lat:
+        :param min_lat:
             minimum latitude
-        :param str max_lat:
+        :param max_lat:
             maximum latitude
-        :param str min_lon:
+        :param min_lon:
             minimum longitude
-        :param str max_lon:
+        :param max_lon:
             maximum longitude
 
         :return:
@@ -453,8 +460,14 @@ class SAGEIILoaderV700(object):
 
         return data
 
-    def convert_to_xarray(self, data):
+    def convert_to_xarray(self, data: Dict) -> xr.Dataset:
+        """
+        :param data:
+            Data from the `load_data` function
 
+        :return:
+            data formatted to an xarray Dataset
+        """
         fields = dict()
         fields['geometry'] = ['Tan_Alt', 'Tan_Lat', 'Tan_Lon']
         fields['background'] = ['NMC_Pres', 'NMC_Temp', 'NMC_Dens', 'NMC_Dens_Err', 'Density', 'Density_Err']
