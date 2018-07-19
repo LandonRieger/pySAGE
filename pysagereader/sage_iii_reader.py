@@ -1,8 +1,9 @@
 import numpy as np
 import os
 from collections import OrderedDict
-from astropy.time import Time
+import pandas as pd
 import copy
+
 
 class SAGEIIILoaderV400(object):
 
@@ -11,7 +12,6 @@ class SAGEIIILoaderV400(object):
         self.data_folder = ''
         self.data_format = self.get_data_format()
         self.sage_ii_format = True
-
 
     def get_data_format(self):
 
@@ -163,7 +163,7 @@ class SAGEIIILoaderV400(object):
 
         return data_format
 
-    def load_file(self,file):
+    def load_file(self, file):
 
         # load the file into the buffer
         file_format = self.data_format
@@ -180,7 +180,7 @@ class SAGEIIILoaderV400(object):
             except:
                 print(key)
 
-        #add some extra fields for convenience
+        # add some extra fields for convenience
         lat = data['Subtangent Latitude']
         lat[lat == data['Fill Value Float']] = np.nan
         data['Lat'] = np.nanmean(lat)
@@ -188,29 +188,29 @@ class SAGEIIILoaderV400(object):
         lon[lon == data['Fill Value Float']] = np.nan
         data['Lon'] = np.nanmean(lon)
 
-        #add a modified julian date and astropy object time fields
+        # add a modified julian date and astropy object time fields
         date = data['Date']
-        date = np.delete(date,np.where(date == data['Fill Value Int']))
+        date = np.delete(date, np.where(date == data['Fill Value Int']))
 
-        year    = [str(d)          for d in np.asarray(date/10000,dtype=int)]
-        month   = [str(d).zfill(2) for d in np.asarray(date % 10000 / 100,dtype=int)]
-        day     = [str(d).zfill(2) for d in date % 100]
+        year = [str(d) for d in np.asarray(date/10000, dtype=int)]
+        month = [str(d).zfill(2) for d in np.asarray(date % 10000 / 100, dtype=int)]
+        day = [str(d).zfill(2) for d in date % 100]
 
-        time    = data['Time']
-        time    = np.delete(time, np.where(time == data['Fill Value Int']))
+        time = data['Time']
+        time = np.delete(time, np.where(time == data['Fill Value Int']))
 
-        hour    = [str(t).zfill(2) for t in np.asarray(time/10000,dtype=int)]
-        minute  = [str(t).zfill(2) for t in np.asarray(time/100,dtype=int) % 100]
-        second  = [str(t).zfill(2) for t in time % 100]
+        hour = [str(t).zfill(2) for t in np.asarray(time/10000, dtype=int)]
+        minute = [str(t).zfill(2) for t in np.asarray(time/100, dtype=int) % 100]
+        second = [str(t).zfill(2) for t in time % 100]
 
         time_str = [y + '-' + m + '-' + d + ' ' + h + ':' + mi + ':' + s for y,m,d,h,mi,s in zip(year,month,day,hour,minute,second)]
         try:
-            t = Time(time_str,format='iso')
+            # t = Time(time_str,format='iso')
+            t = pd.to_datetime(time_str)
         except:
             print('time error')
 
-
-        data['mjd'] = np.mean(t.mjd)
+        data['mjd'] = np.mean(np.array((t - pd.Timestamp('1858-11-17')) / pd.Timedelta(1, 'D')))
         data['time'] = t
 
         return data
@@ -237,18 +237,18 @@ class SAGEIIILoaderV400(object):
 
         return data
 
-
     def load_data(self, min_date, max_date, min_lat=-90, max_lat=90, min_lon=-180, max_lon=180):
 
-        min_mjd = Time(min_date,format='iso')
-        max_mjd = Time(max_date,format='iso')
+        min_mjd = (pd.Timestamp(min_date) - pd.Timestamp('1858-11-17')) / pd.Timedelta(1, 'D')
+        max_mjd = (pd.Timestamp(max_date) - pd.Timestamp('1858-11-17')) / pd.Timedelta(1, 'D')
         mjds = np.arange(int(min_mjd.mjd), int(max_mjd.mjd) + 1, 1)
 
         data = dict()
         d = []
         for mjd in mjds:
 
-            t = Time(mjd,format='mjd')
+            # t = Time(mjd,format='mjd')
+            t = pd.Timedelta(mjd, 'D') + pd.Timestamp('1858-11-17')
             folder = os.path.join(self.data_folder,str(t.datetime.year) + '.' + str(t.datetime.month).zfill(2) + '.' + str(t.datetime.day).zfill(2))
 
             if not os.path.isdir(folder):

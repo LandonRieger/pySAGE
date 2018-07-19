@@ -8,5 +8,5 @@ setup(name='pysagereader',
       license='MIT',
       url='https://github.com/LandonRieger/pySAGE.git',
       packages=find_packages(),
-      install_requires=['astropy', 'xarray']
+      install_requires=['xarray']
       )

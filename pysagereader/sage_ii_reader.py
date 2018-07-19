@@ -3,7 +3,7 @@ import xarray as xr
 import pandas as pd
 import os
 from collections import OrderedDict
-from astropy.time import Time
+# from astropy.time import Time
 import logging
 import copy
 from typing import List, Dict, Union, Tuple
@@ -363,8 +363,9 @@ class SAGEIILoaderV700(object):
                                 str(ymd)[6::].zfill(2) + ' ' + str(hours).zfill(2) + ':' +
                                 str(mins).zfill(2) + ':' + str(secs).zfill(2))
 
-        data['time'] = Time(date_str, format='iso')
-        data['mjd'] = data['time'].mjd
+        # data['time'] = Time(date_str, format='iso')
+        data['time'] = pd.to_datetime(date_str)
+        data['mjd'] = np.array((data['time'] - pd.Timestamp('1858-11-17')) / pd.Timedelta(1, 'D'))
         data['mjd'][data['mjd'] < 40588] = -999  # get rid of invalid dates
 
         return data
@@ -394,16 +395,15 @@ class SAGEIILoaderV700(object):
         -------
             Variables are returned as numpy arrays (1 or 2 dimensional depending on the variable)
         """
-        min_time = Time(min_date, format='iso')
-        max_time = Time(max_date, format='iso')
-
+        min_time = pd.Timestamp(min_date)
+        max_time = pd.Timestamp(max_date)
         data = dict()
         init = False
 
         # create a list of unique year/month combinations between the start/end dates
         uniq = OrderedDict()
-        for year in [(t.datetime.year, t.datetime.month) for t in Time(np.arange(min_time.mjd, max_time.mjd, 27),
-                                                                       format='mjd')]:
+        for year in [(t.date().year, t.date().month) for t in
+                     pd.date_range(min_time, max_time+pd.Timedelta(27, 'D'), freq='27D')]:
             uniq[year] = year
 
         # load in the data from the desired months
@@ -496,8 +496,8 @@ class SAGEIILoaderV700(object):
         -------
             returns the dictionary with only data in the valid latitude, longitude and time range
         """
-        min_mjd = Time(min_date, format='iso').mjd
-        max_mjd = Time(max_date, format='iso').mjd
+        min_mjd = (pd.Timestamp(min_date) - pd.Timestamp('1858-11-17')) / pd.Timedelta(1, 'D')
+        max_mjd = (pd.Timestamp(max_date) - pd.Timestamp('1858-11-17')) / pd.Timedelta(1, 'D')
 
         good = (data['mjd'] > min_mjd) & (data['mjd'] < max_mjd) & \
                (data['Lat'] > min_lat) & (data['Lat'] < max_lat) & \
