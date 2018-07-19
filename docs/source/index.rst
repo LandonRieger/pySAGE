@@ -6,6 +6,18 @@
 Welcome to pysagereader's documentation!
 ========================================
 
+|Documentation Status| |MIT license| |PyPI version fury.io|
+
+.. |Documentation Status| image:: https://readthedocs.org/projects/pysagereader/badge/?version=latest
+   :target: http://pysagereader.readthedocs.io/?badge=latest
+
+.. |MIT license| image:: https://img.shields.io/badge/License-MIT-blue.svg
+   :target: https://lbesson.mit-license.org/
+
+.. |PyPI version fury.io| image:: https://badge.fury.io/py/pysagereader.svg
+    :target: https://badge.fury.io/py/pysagereader
+
+
 pysagereader is a python reader for the SAGE II data.
 Data is imported in either an `xarray` data structure or a dictionary of numpy arrays.
 
