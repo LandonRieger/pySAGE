@@ -14,7 +14,7 @@ Data is imported in either an `xarray` data structure or a dictionary of numpy a
    :caption: Contents:
 
    quickstart
-.. autoclass:: pysagereader.SAGEIILoaderV700
+   sage_variables
 
 
 Indices and tables
