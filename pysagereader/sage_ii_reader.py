@@ -7,22 +7,7 @@ from collections import OrderedDict
 import logging
 import copy
 from typing import List, Dict, Union, Tuple
-
-
-def git_version():
-    """
-    Get the hash of the current git revision
-
-    Returns
-    -------
-    bytes
-       The git revision
-    """
-    from subprocess import Popen, PIPE
-    git_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..')
-    gitproc = Popen(['git', 'rev-parse', 'HEAD'], stdout=PIPE, cwd=git_dir)
-    (stdout, _) = gitproc.communicate()
-    return stdout.strip()
+import pysagereader
 
 
 class SAGEIILoaderV700(object):
@@ -692,11 +677,6 @@ class SAGEIILoaderV700(object):
         for key in attrs.keys():
             data[key].attrs = attrs[key]
 
-        try:
-            git_vers = git_version().decode('utf-8')
-        except:
-            git_vers = ''
-
         data.attrs = {'description': 'Retrieved vertical profiles of  aerosol extinction, ozone, '
                                      'nitrogen dioxide, water vapor, and meteorological profiles from SAGE II '
                                      'version 7.00',
@@ -706,7 +686,7 @@ class SAGEIILoaderV700(object):
                       'title': 'SAGE II version 7.00',
                       'date_created': pd.Timestamp.now().strftime('%B %d %Y'),
                       'source_code': 'repository: https://github.com/LandonRieger/pySAGE.git, revision: '
-                                     + git_vers,
+                                     + pysagereader.__version__,
                       'source_data': 'https://eosweb.larc.nasa.gov/project/sage2/sage2_v7_table',
                       'version': 'v1.0.0',
                       'Conventions': 'CF-1.7'}
