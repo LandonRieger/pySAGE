@@ -40,7 +40,7 @@ An example of loading data from 2000 through 2003 between 10\ :sup:`o`\N and 10\
 
     from pySAGE.pysagereader.sage_ii_reader import SAGEIILoaderV700
 
-    sage = SAGEIILoaderV700(data_folder=data_folder, filter_ozone=True, cf_names=True)
+    sage = SAGEIILoaderV700(data_folder=data_folder, filter_ozone=True)
     data = sage.load_data('2000-1-1', '2003-12-31', -10, 10)
     data.O3.plot(x='time', robust=True)
 
