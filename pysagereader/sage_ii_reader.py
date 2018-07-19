@@ -25,62 +25,67 @@ def git_version():
 
 
 class SAGEIILoaderV700(object):
+    """
+    Class designed to load the v7.00 SAGE II spec and index files provided by NASA ADSC into python
 
-    def __init__(self, output_format: str='xarray', species: List[str]=('aerosol', 'h2o', 'no2', 'ozone', 'background'),
+    Data files must be accessible by the users machine, and can be downloaded from:
+    https://eosweb.larc.nasa.gov/project/sage2/sage2_v7_table
+
+    Parameters
+    ----------
+    output_format
+        format for the output data. If `xarray` the output is returned as an `xarray.Dataset`.
+        If None the output is returned as a dictionary of numpy arrays.
+    species
+        Species to be returned in the output data. If None all species are returned. Options are
+        `aerosol`, `ozone`, `h2o`, and `no2`. If more than one species is returned fields will be NaN-padded
+        where data is not available. `species` is only used in `xarray` is set as the `output_data` format,
+        otherwise it has no effect.
+    cf_names
+        If True then CF-1.7 naming conventions are used for the output_data when `xarray` is selected.
+    filter_aerosol
+        filter the aerosol using the cloud flag
+        **only applied if `xarray` is selected as the output type**
+    filter_ozone
+        filter the ozone using the criteria recommended in the release notes
+        **only applied if `xarray` is selected as the output type**
+
+        * Exclusion of all data points with an uncertainty estimate of 300% or greater
+        * Exclusion of all profiles with an uncertainty greater than 10% between 30 and 50 km
+        * Exclusion of all data points at altitude and below the occurrence of an aerosol extinction value of
+          greater than 0.006 km^-1
+        * Exclusion of all data points at altitude and below the occurrence of both the 525nm aerosol extinction
+          value exceeding 0.001 km^-1 and the 525/1020 extinction ratio falling below 1.4
+        * Exclusion of all data points below 35km an 200% or larger uncertainty estimate
+
+    enumerate_flags
+        expand the index and species flags to their boolean values.
+    normalize_percent_error
+        give the species error as percent rather than percent * 100
+
+
+    Example
+    -------
+
+    >>> sage = SAGEIILoaderV700()
+    >>> sage.data_folder = 'path/to/data'
+    >>> data = sage.load_data('2004-1-1','2004-5-1')
+
+    In addition to the sage ii fields reported in the files, two additional time fields are provided
+    to allow for easier subsetting of the data.
+
+    `data['mjd']` is a numpy array containing the modified julian dates of each scan
+    `date['time']` is an astropy.time object containing the times of each scan
+
+    """
+    def __init__(self, data_folder: str=None, output_format: str='xarray', species: List[str]=('aerosol', 'h2o', 'no2', 'ozone', 'background'),
                  cf_names: bool=False, filter_aerosol: bool=False, filter_ozone: bool=False,
                  enumerate_flags: bool=False, normalize_percent_error: bool=False, return_flags: bool=False):
-        """
-        Class designed to load the v7.00 SAGE II spec and index files provided by NASA ADSC into python
-
-        Data files must be accessible by the users machine, and can be downloaded from:
-        https://eosweb.larc.nasa.gov/project/sage2/sage2_v7_table
-
-        Parameters
-        ----------
-
-        :param output_format: format for the output data. If `xarray` the output is returned as an `xarray.Dataset`.
-            If None the output is returned as a dictionary of numpy arrays.
-        :param species: Species to be returned in the output data. If None all species are returned. Options are
-            `aerosol`, `ozone`, `h2o`, and `no2`. If more than one species is returned fields will be NaN-padded
-            where data is not available. `species` is only used in `xarray` is set as the `output_data` format,
-            otherwise it has no effect.
-        :param cf_names: If True then CF-1.7 naming conventions are used for the output_data when `xarray` is selected.
-        :param filter_aerosol: filter the aerosol using the cloud flag
-            **only applied if `xarray` is selected as the output type**
-        :param filter_ozone: filter the ozone using the criteria recommended in the release notes
-            **only applied if `xarray` is selected as the output type**
-
-            * Exclusion of all data points with an uncertainty estimate of 300% or greater
-            * Exclusion of all profiles with an uncertainty greater than 10% between 30 and 50 km
-            * Exclusion of all data points at altitude and below the occurrence of an aerosol extinction value of
-              greater than 0.006 km^-1
-            * Exclusion of all data points at altitude and below the occurrence of both the 525nm aerosol extinction
-              value exceeding 0.001 km^-1 and the 525/1020 extinction ratio falling below 1.4
-            * Exclusion of all data points below 35km an 200% or larger uncertainty estimate
-
-        :param enumerate_flags: expand the index and species flags to their boolean values.
-        :param normalize_percent_error: give the species error as percent rather than percent * 100
-
-
-        Example
-        -------
-
-        >>> sage = SAGEIILoaderV700()
-        >>> sage.data_folder = 'path/to/data'
-        >>> data = sage.load_data('2004-1-1','2004-5-1')
-
-        In addition to the sage ii fields reported in the files, two additional time fields are provided
-        to allow for easier subsetting of the data.
-
-        `data['mjd']` is a numpy array containing the modified julian dates of each scan
-        `date['time']` is an astropy.time object containing the times of each scan
-
-        """
 
         if type(species) == str:
             species = [species]
 
-        self.data_folder = ''  # Type: str
+        self.data_folder = data_folder  # Type: str
         self.version = '7.00'
         self.index_file = 'SAGE_II_INDEX_'
         self.spec_file = 'SAGE_II_SPEC_'
@@ -105,7 +110,8 @@ class SAGEIILoaderV700(object):
 
         used for reading the binary data format
 
-        :return:
+        Returns
+        -------
             an ordered dictionary of variables provided in the spec file. Each dictionary
             field contains a tuple with the information (data type, number of data points).
             Ordering is important as the sage ii binary files are read sequentially.
@@ -160,7 +166,8 @@ class SAGEIILoaderV700(object):
 
         used for reading the binary data format
 
-        :return:
+        Returns
+        -------
             an ordered dictionary of variables provided in the index file. Each dictionary
             field contains a tuple with the information (data type, length). Ordering is
             important as the sage ii binary files are read sequentially.
@@ -228,12 +235,15 @@ class SAGEIILoaderV700(object):
         """
         Returns the spec filename given a year and month
 
-        :param year:
+        Parameters
+        ----------
+        year
             year of the data that will be loaded
-        :param month:
+        month
             month of the data that will be loaded
 
-        :return:
+        Returns
+        -------
             filename of the spec file where the data is stored
         """
         file = os.path.join(self.data_folder,
@@ -248,12 +258,15 @@ class SAGEIILoaderV700(object):
         """
         Returns the index filename given a year and month
 
-        :param year:
+        Parameters
+        ----------
+        year
             year of the data that will be loaded
-        :param month:
+        month
             month of the data that will be loaded
 
-        :return:
+        Returns
+        -------
             filename of the index file where the data is stored
         """
 
@@ -268,12 +281,15 @@ class SAGEIILoaderV700(object):
     def read_spec_file(self, file: str, num_profiles: int) -> List[Dict]:
         """
 
-        :param file:
+        Parameters
+        ----------
+        file
             name of the spec file to be read
-        :param num_profiles:
+        num_profiles
             number of profiles to read from the spec file (usually determined from the index file)
 
-        :return:
+        Returns
+        -------
             list of dictionaries containing the spec data. Each list is one event
         """
 
@@ -302,10 +318,13 @@ class SAGEIILoaderV700(object):
         """
         Read the binary file into a python data structure
 
-        :param file:
+        Parameters
+        ----------
+        file
             filename to be read
 
-        :return:
+        Returns
+        -------
             data from the file
         """
 
@@ -356,20 +375,23 @@ class SAGEIILoaderV700(object):
         """
         Load the SAGE II data for the specified dates and locations.
 
-        :param min_date:
+        Parameters
+        ----------
+        min_date
             start date where data will be loaded in iso format, eg: '2004-1-1'
-        :param max_date:
+        max_date
             end date where data will be loaded in iso format, eg: '2004-1-1'
-        :param min_lat:
+        min_lat
             minimum latitude (optional)
-        :param max_lat:
+        max_lat
             maximum latitude (optional)
-        :param min_lon:
+        min_lon
             minimum longitude (optional)
-        :param max_lon:
+        max_lon
             maximum longitude (optional)
 
-        :return:
+        Returns
+        -------
             Variables are returned as numpy arrays (1 or 2 dimensional depending on the variable)
         """
         min_time = Time(min_date, format='iso')
@@ -453,22 +475,25 @@ class SAGEIILoaderV700(object):
         """
         Removes any data from the dictionary that does not meet the specified time, latitude and longitude requirements.
 
-        :param data:
+        Parameters
+        ----------
+        data
             dictionary of sage ii data. Must have the fields 'mjd', 'Lat' and 'Lon'. All others are optional
-        :param min_date:
-            start date in iso format
-        :param max_date:
-            end date in iso format
-        :param min_lat:
-            minimum latitude
-        :param max_lat:
-            maximum latitude
-        :param min_lon:
-            minimum longitude
-        :param max_lon:
-            maximum longitude
+        min_date
+            start date where data will be loaded in iso format, eg: '2004-1-1'
+        max_date
+            end date where data will be loaded in iso format, eg: '2004-1-1'
+        min_lat
+            minimum latitude (optional)
+        max_lat
+            maximum latitude (optional)
+        min_lon
+            minimum longitude (optional)
+        max_lon
+            maximum longitude (optional)
 
-        :return:
+        Returns
+        -------
             returns the dictionary with only data in the valid latitude, longitude and time range
         """
         min_mjd = Time(min_date, format='iso').mjd
@@ -490,10 +515,13 @@ class SAGEIILoaderV700(object):
 
     def convert_to_xarray(self, data: Dict) -> Union[xr.Dataset, Tuple[xr.Dataset, xr.Dataset]]:
         """
-        :param data:
+        Parameters
+        ----------
+        data
             Data from the `load_data` function
 
-        :return:
+        Returns
+        -------
             data formatted to an xarray Dataset
         """
 
@@ -598,8 +626,8 @@ class SAGEIILoaderV700(object):
             ozone_good = ozone_good.where(xr_data.Alt_Grid > min_alt)
             # Exclusion of all data points below 35km an 200% or larger uncertainty estimate
             no_good = (xr_data.O3_Err > 20000) & (xr_data.Alt_Grid < 35)
-            ozone_good = ozone_good.where(~no_good)
-            xr_data['ozone_filter'] = ~np.isnan(ozone_good)
+            ozone_good = ~np.isnan(ozone_good.where(~no_good))
+            xr_data['ozone_filter'] = ozone_good
 
         if self.filter_aerosol:
             xr_data['Ext'] = xr_data.Ext.where(~xr_data.cloud_filter)
@@ -616,20 +644,21 @@ class SAGEIILoaderV700(object):
                 if 'Err' in var:  # put error units back into percent
                     xr_data[var] = (xr_data[var] / 100).astype('float32')
 
-        xr_data = self.cf_conventions(xr_data)
+        xr_data = xr_data.transpose('time', 'Alt_Grid', 'wavelength')
+        xr_data = self.apply_cf_conventions(xr_data)
 
         if self.return_flags:
             return xr_data, xr.merge([index_flags, species_flags])
         else:
             return xr_data
 
-    def cf_conventions(self, data):
+    def apply_cf_conventions(self, data):
 
         attrs = {'time': {'standard_name': 'time'},
                  'Lat': {'standard_name': 'latitude',
-                         'units': 'degrees north'},
+                         'units': 'degrees_north'},
                  'Lon': {'standard_name': 'longitude',
-                         'units': 'degrees east'},
+                         'units': 'degrees_east'},
                  'Alt_Grid': {'units': 'km'},
                  'wavelength': {'units': 'nm',
                                 'description': 'wavelength at which aerosol extinction is retrieved'},
@@ -647,7 +676,8 @@ class SAGEIILoaderV700(object):
                              'units': 'percent'},
                  'H2O_Err': {'standard_name': 'number_concentration_of_water_vapor_in_air_error',
                              'units': 'percent'},
-                 'Ext_Err': {'standard_name': 'volume_extinction_coefficient_in_air_due_to_ambient_aerosol_particles_error',
+                 'Ext_Err': {'standard_name': 'volume_extinction_coefficient_in_air_due_to_ambient_aerosol_'
+                                              'particles_error',
                              'units': 'percent'},
                  'Duration': {'units': 'seconds',
                               'description': 'duration of the sunrise/sunset event'},
@@ -670,6 +700,7 @@ class SAGEIILoaderV700(object):
                       'date_created': pd.Timestamp.now().strftime('%B %d %Y'),
                       'source_code': 'repository: https://github.com/LandonRieger/pySAGE.git, revision: '
                                      + git_version().decode('utf-8'),
+                      'source_data': 'https://eosweb.larc.nasa.gov/project/sage2/sage2_v7_table',
                       'version': 'v1.0.0',
                       'Conventions': 'CF-1.7'}
 
@@ -707,9 +738,14 @@ class SAGEIILoaderV700(object):
         """
         Convert the int32 index flags to a dataset of distinct flags
 
-        :param data:
+        Parameters
+        ----------
+        data
             Dictionary of input data as returned by `load_data`
-        :return: Dataset of the index bit flags
+
+        Returns
+        -------
+            Dataset of the index bit flags
         """
         flags = dict()
         flags['pmc_present'] = 0
@@ -746,9 +782,14 @@ class SAGEIILoaderV700(object):
         """
         Convert the int32 species flags to a dataset of distinct flags
 
-        :param data:
+        Parameters
+        ----------
+        data
             Dictionary of input data as returned by `load_data`
-        :return: Dataset of the index bit flags
+
+        Returns
+        -------
+            Dataset of the index bit flags
         """
         flags = dict()
         flags['separation_method'] = [0, 1, 2]

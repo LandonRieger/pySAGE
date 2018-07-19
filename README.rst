@@ -19,7 +19,7 @@ To install the package from pypi run:
 
 SAGE II Reader
 **************
-As far as possible the original SAGE II variable names used in the original IDL scripts and `documentation <https://eosweb.larc.nasa.gov/sites/default/files/project/sage2/readme/readme_sage2_v6.20.txt >`_ have been adopted.
+As far as possible the original SAGE II variable names used in the IDL scripts and `documentation <https://eosweb.larc.nasa.gov/sites/default/files/project/sage2/readme/readme_sage2_v6.20.txt >`_ have been adopted.
 
 Altitude Range for Species
 --------------------------
@@ -151,16 +151,9 @@ Basic Use
 
 An example of loading data from 2000 through 2003 between 10\ :sup:`o`\N and 10\ :sup:`o`\S ::
 
-    from pysagereader.sageiireader import SAGEIILoaderV700
-    import matplotlib.pyplot as plt
+    from pySAGE.pysagereader.sage_ii_reader import SAGEIILoaderV700
 
-    sage = SAGEIILoaderV700()
-    sage.data_folder = data_folder
-    data = sage.load_data('2000-1-1','2003-12-31', -10,10)
+    sage = SAGEIILoaderV700(data_folder=data_folder, filter_ozone=True, cf_names=True)
+    data = sage.load_data('2000-1-1', '2003-12-31', -10, 10)
+    data.O3.plot(x='time', robust=True)
 
-    #replace bad data with nans
-    data['O3'][data['O3'] == data['FillVal']] = np.nan
-    data['O3'][data['O3_Err']>10000]       = np.nan
-
-    #get ozone altitudes
-    o3_alts = data['Alt_Grid'][(data['Alt_Grid'] >= data['Range_O3'][0]) & (data['Alt_Grid'] <= data['Range_O3'][1])]
