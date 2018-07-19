@@ -1,7 +1,9 @@
 from setuptools import setup, find_packages
+import versioneer
 
 setup(name='pysagereader',
-      version='0.2.0',
+      version=versioneer.get_version(),
+      cmdclass=versioneer.get_cmdclass(),
       description='SAGE binary file readers',
       author='USASK ARG',
       author_email='landon.rieger@usask.ca',

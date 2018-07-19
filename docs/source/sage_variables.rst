@@ -1,8 +1,11 @@
 .. _sage_variables:
 
 
-SAGE II Variables
-*****************
+SAGE II
+*******
+
+Variables
+=========
 
 As far as possible the original SAGE II variable names used in the IDL scripts and
 `documentation <https://eosweb.larc.nasa.gov/sites/default/files/project/sage2/readme/readme_sage2_v6.20.txt/>`_
@@ -134,3 +137,52 @@ Radius_Err        Aerosol effective radius uncertainty (%x100)
 Dens_Mid_Atm_Err  Middle atmosphere density uncertainty (%x100)
 InfVec            Bit-wise quality flags
 ================  ====================================================
+
+Quality Flags
+=============
+
+SAGE II data returns both event (index) flags as well as species flags. These are 32 bit integers
+contained in the `InfVec` and `ProfileInfVec` variables respectively. However, for easier use the
+flags can be expanded to show each bit separately.
+
+.. code-block:: python
+
+    from pysagereader.sage_ii_reader import SAGEIILoaderV700
+
+    sage = SAGEIILoaderV700(data_folder=r'path\to\sage\data', enumerate_flags=True)
+    data = sage.load_data('2000-1-1', '2003-12-31', -10, 10)
+
+The flags can also be returned in a separate array for convenience.
+
+.. code-block:: python
+
+    from pysagereader.sage_ii_reader import SAGEIILoaderV700
+
+    sage = SAGEIILoaderV700(data_folder=r'path\to\sage\data', return_separate_flags=True)
+    data, flags = sage.load_data('2000-1-1', '2003-12-31', -10, 10)
+
+
+Data Filtering
+==============
+
+Ozone
+-----
+
+It is recommend that only a subset of the ozone data be used for scientific analysis, based on
+filtering recommendations from the `release notes. <https://eosweb.larc.nasa.gov/project/sage2/sage2_release_v7_notes/>`_
+Ozone results that meet these criteria can be determined from the `ozone_filter` variable in the returned
+dataset. A value of `0` indicates ozone should not be used. The following criteria are used as the filters:
+
+    * Exclusion of all data points with an uncertainty estimate of 300% or greater
+    * Exclusion of all profiles with an uncertainty greater than 10% between 30 and 50 km
+    * Exclusion of all data points at altitude and below the occurrence of an aerosol extinction value of
+      greater than 0.006 km\ :sup:`-1`
+    * Exclusion of all data points at altitude and below the occurrence of both the 525nm aerosol extinction
+      value exceeding 0.001 km\ :sup:`-1` and the 525/1020 extinction ratio falling below 1.4
+    * Exclusion of all data points below 35km an 200% or larger uncertainty estimate
+
+Aerosol
+-------
+
+To remove cloud contamination from the aerosol data flags `Cloud_Bit_1` and `Cloud_Bit_2` are used to
+compute the `cloud_filter`. A value of `1` indicates there is a cloud present at or above that altitude.

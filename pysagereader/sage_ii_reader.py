@@ -19,7 +19,8 @@ def git_version():
        The git revision
     """
     from subprocess import Popen, PIPE
-    gitproc = Popen(['git', 'rev-parse', 'HEAD'], stdout=PIPE)
+    git_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..')
+    gitproc = Popen(['git', 'rev-parse', 'HEAD'], stdout=PIPE, cwd=git_dir)
     (stdout, _) = gitproc.communicate()
     return stdout.strip()
 
@@ -36,6 +37,8 @@ class SAGEIILoaderV700(object):
     output_format
         format for the output data. If `xarray` the output is returned as an `xarray.Dataset`.
         If None the output is returned as a dictionary of numpy arrays.
+
+        **NOTE: the following options only apply to xarray output types**
     species
         Species to be returned in the output data. If None all species are returned. Options are
         `aerosol`, `ozone`, `h2o`, and `no2`. If more than one species is returned fields will be NaN-padded
@@ -45,10 +48,8 @@ class SAGEIILoaderV700(object):
         If True then CF-1.7 naming conventions are used for the output_data when `xarray` is selected.
     filter_aerosol
         filter the aerosol using the cloud flag
-        **only applied if `xarray` is selected as the output type**
     filter_ozone
         filter the ozone using the criteria recommended in the release notes
-        **only applied if `xarray` is selected as the output type**
 
         * Exclusion of all data points with an uncertainty estimate of 300% or greater
         * Exclusion of all profiles with an uncertainty greater than 10% between 30 and 50 km
@@ -62,7 +63,8 @@ class SAGEIILoaderV700(object):
         expand the index and species flags to their boolean values.
     normalize_percent_error
         give the species error as percent rather than percent * 100
-
+    return_separate_flags
+        return the enumerated flags as a separate data array
 
     Example
     -------
@@ -80,7 +82,7 @@ class SAGEIILoaderV700(object):
     """
     def __init__(self, data_folder: str=None, output_format: str='xarray', species: List[str]=('aerosol', 'h2o', 'no2', 'ozone', 'background'),
                  cf_names: bool=False, filter_aerosol: bool=False, filter_ozone: bool=False,
-                 enumerate_flags: bool=False, normalize_percent_error: bool=False, return_flags: bool=False):
+                 enumerate_flags: bool=False, normalize_percent_error: bool=False, return_separate_flags: bool=False):
 
         if type(species) == str:
             species = [species]
@@ -101,7 +103,7 @@ class SAGEIILoaderV700(object):
         self.filter_ozone = filter_ozone
         self.normalize_percent_error = normalize_percent_error
         self.enumerate_flags = enumerate_flags
-        self.return_flags = return_flags
+        self.return_separate_flags = return_separate_flags
 
     @staticmethod
     def get_spec_format() -> Dict[str, Tuple[str, int, int]]:
@@ -647,7 +649,7 @@ class SAGEIILoaderV700(object):
         xr_data = xr_data.transpose('time', 'Alt_Grid', 'wavelength')
         xr_data = self.apply_cf_conventions(xr_data)
 
-        if self.return_flags:
+        if self.return_separate_flags:
             return xr_data, xr.merge([index_flags, species_flags])
         else:
             return xr_data
@@ -690,6 +692,11 @@ class SAGEIILoaderV700(object):
         for key in attrs.keys():
             data[key].attrs = attrs[key]
 
+        try:
+            git_vers = git_version().decode('utf-8')
+        except:
+            git_vers = ''
+
         data.attrs = {'description': 'Retrieved vertical profiles of  aerosol extinction, ozone, '
                                      'nitrogen dioxide, water vapor, and meteorological profiles from SAGE II '
                                      'version 7.00',
@@ -699,7 +706,7 @@ class SAGEIILoaderV700(object):
                       'title': 'SAGE II version 7.00',
                       'date_created': pd.Timestamp.now().strftime('%B %d %Y'),
                       'source_code': 'repository: https://github.com/LandonRieger/pySAGE.git, revision: '
-                                     + git_version().decode('utf-8'),
+                                     + git_vers,
                       'source_data': 'https://eosweb.larc.nasa.gov/project/sage2/sage2_v7_table',
                       'version': 'v1.0.0',
                       'Conventions': 'CF-1.7'}
