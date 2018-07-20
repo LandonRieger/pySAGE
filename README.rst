@@ -42,7 +42,7 @@ An example of loading data from 2000 through 2003 between 10\ :sup:`o`\N and 10\
 
     from pySAGE.pysagereader.sage_ii_reader import SAGEIILoaderV700
 
-    sage = SAGEIILoaderV700(data_folder=/path/to/sageii/data, filter_ozone=True)
+    sage = SAGEIILoaderV700(data_folder='/path/to/sageii/data', filter_ozone=True)
     data = sage.load_data('2000-1-1', '2003-12-31', -10, 10)
     data.O3.plot(x='time', robust=True)
 
@@ -52,5 +52,5 @@ Command Line Utility
 
 If you just need some yearly netcdf files you can run this script from the command line::
 
-    python /install/directory/pysagereader/make_netcdf.py -i /sageii/data/folder -o /output/folder -time_res yearly
+    python /install/directory/pysagereader/make_netcdf.py -i /sageii/data/folder -o /output/folder --time_res yearly
 
