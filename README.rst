@@ -2,7 +2,7 @@
 Python SAGE Data Reader
 #########################
 
-|Documentation Status| |MIT license| |PyPI version fury.io|
+|Documentation Status| |MIT license| |PyPI version fury.io| |DOI|
 
 .. |Documentation Status| image:: https://readthedocs.org/projects/pysagereader/badge/?version=latest
    :target: http://pysagereader.readthedocs.io/?badge=latest
@@ -13,7 +13,9 @@ Python SAGE Data Reader
 .. |PyPI version fury.io| image:: https://badge.fury.io/py/pysagereader.svg
     :target: https://badge.fury.io/py/pysagereader
 
-
+.. |DOI| image:: https://zenodo.org/badge/57959097.svg
+   :target: https://zenodo.org/badge/latestdoi/57959097
+   
 Basic python reader for SAGE II and SAGE III binary data files into an `xarray` data structure or a dictionary of numpy
 arrays. The binary files SAGE data files are not supplied and must be downloaded by the user. They can be found at the
 `NASA ASDC <https://eosweb.larc.nasa.gov/project/sage2/sage2_v7_table?qt-sage2_aerosol_tabs=1#qt-sage2_aerosol_tabs/>`_
