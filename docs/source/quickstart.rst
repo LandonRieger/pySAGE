@@ -41,3 +41,7 @@ The xarray package also provides convenient export to NetCDF files
    sage = SAGEIILoaderV700(data_folder=r'/path/to/sage/data')
    data = sage.load_data(min_date='2000-1-1', max_date='2001-12-31')
    data.to_netcdf('sage_ii_v700_2000.nc')
+
+Or from the command line::
+
+    python /install/directory/pysagereader/make_netcdf.py -i /sageii/data/folder -o /output/folder -time_res yearly

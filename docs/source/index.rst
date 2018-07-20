@@ -19,13 +19,14 @@ Welcome to pysagereader's documentation!
 
 
 pysagereader is a python reader for the SAGE II data.
-Data is imported in either an `xarray` data structure or a dictionary of numpy arrays.
+Data is imported in either an ``xarray`` data structure or a dictionary of numpy arrays.
 
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
 
    quickstart
+   options
    sage_variables
 
 

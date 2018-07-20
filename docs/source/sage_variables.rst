@@ -170,8 +170,8 @@ Ozone
 
 It is recommend that only a subset of the ozone data be used for scientific analysis, based on
 filtering recommendations from the `release notes. <https://eosweb.larc.nasa.gov/project/sage2/sage2_release_v7_notes/>`_
-Ozone results that meet these criteria can be determined from the `ozone_filter` variable in the returned
-dataset. A value of `0` indicates ozone should not be used. The following criteria are used as the filters:
+Ozone results that meet these criteria can be determined from the ``ozone_filter`` variable in the returned
+dataset. A value of ``0`` indicates ozone should not be used. The following criteria are used as the filters:
 
     * Exclusion of all data points with an uncertainty estimate of 300% or greater
     * Exclusion of all profiles with an uncertainty greater than 10% between 30 and 50 km
@@ -184,5 +184,5 @@ dataset. A value of `0` indicates ozone should not be used. The following criter
 Aerosol
 -------
 
-To remove cloud contamination from the aerosol data flags `Cloud_Bit_1` and `Cloud_Bit_2` are used to
-compute the `cloud_filter`. A value of `1` indicates there is a cloud present at or above that altitude.
+To remove cloud contamination from the aerosol data flags ``Cloud_Bit_1`` and ``Cloud_Bit_2`` are used to
+compute the ``cloud_filter``. A value of ``1`` indicates there is a cloud present at or above that altitude.

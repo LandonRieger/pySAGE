@@ -19,31 +19,32 @@ class SAGEIILoaderV700(object):
 
     Parameters
     ----------
+    data_folder
+        location of sage ii index and spec files.
     output_format
-        format for the output data. If `xarray` the output is returned as an `xarray.Dataset`.
+        format for the output data. If ``'xarray'`` the output is returned as an ``xarray.Dataset``.
         If None the output is returned as a dictionary of numpy arrays.
 
         **NOTE: the following options only apply to xarray output types**
     species
         Species to be returned in the output data. If None all species are returned. Options are
-        `aerosol`, `ozone`, `h2o`, and `no2`. If more than one species is returned fields will be NaN-padded
-        where data is not available. `species` is only used in `xarray` is set as the `output_data` format,
+        ``aerosol``, ``ozone``, ``h2o``, and ``no2``. If more than one species is returned fields will be NaN-padded
+        where data is not available. ``species`` is only used if ``'xarray'`` is set as the ``output_data`` format,
         otherwise it has no effect.
     cf_names
-        If True then CF-1.7 naming conventions are used for the output_data when `xarray` is selected.
+        If True then CF-1.7 naming conventions are used for the output_data when ``xarray`` is selected.
     filter_aerosol
         filter the aerosol using the cloud flag
     filter_ozone
         filter the ozone using the criteria recommended in the release notes
 
-        * Exclusion of all data points with an uncertainty estimate of 300% or greater
-        * Exclusion of all profiles with an uncertainty greater than 10% between 30 and 50 km
-        * Exclusion of all data points at altitude and below the occurrence of an aerosol extinction value of
-          greater than 0.006 km^-1
-        * Exclusion of all data points at altitude and below the occurrence of both the 525nm aerosol extinction
-          value exceeding 0.001 km^-1 and the 525/1020 extinction ratio falling below 1.4
-        * Exclusion of all data points below 35km an 200% or larger uncertainty estimate
-
+            * Exclusion of all data points with an uncertainty estimate of 300% or greater
+            * Exclusion of all profiles with an uncertainty greater than 10% between 30 and 50 km
+            * Exclusion of all data points at altitude and below the occurrence of an aerosol extinction value of
+              greater than 0.006 km^-1
+            * Exclusion of all data points at altitude and below the occurrence of both the 525nm aerosol extinction
+              value exceeding 0.001 km^-1 and the 525/1020 extinction ratio falling below 1.4
+            * Exclusion of all data points below 35km an 200% or larger uncertainty estimate
     enumerate_flags
         expand the index and species flags to their boolean values.
     normalize_percent_error
@@ -61,8 +62,9 @@ class SAGEIILoaderV700(object):
     In addition to the sage ii fields reported in the files, two additional time fields are provided
     to allow for easier subsetting of the data.
 
-    `data['mjd']` is a numpy array containing the modified julian dates of each scan
-    `date['time']` is an astropy.time object containing the times of each scan
+    ``data['mjd']`` is a numpy array containing the modified julian dates of each scan
+
+    ``date['time']`` is an pandas time series object containing the times of each scan
 
     """
     def __init__(self, data_folder: str=None, output_format: str='xarray', species: List[str]=('aerosol', 'h2o', 'no2', 'ozone', 'background'),
@@ -91,7 +93,7 @@ class SAGEIILoaderV700(object):
         self.return_separate_flags = return_separate_flags
 
     @staticmethod
-    def get_spec_format() -> Dict[str, Tuple[str, int, int]]:
+    def get_spec_format() -> Dict[str, Tuple[str, int]]:
         """
         spec format taken from sg2_specinfo.pro provided in the v7.00 download
 
@@ -99,9 +101,10 @@ class SAGEIILoaderV700(object):
 
         Returns
         -------
-            an ordered dictionary of variables provided in the spec file. Each dictionary
-            field contains a tuple with the information (data type, number of data points).
-            Ordering is important as the sage ii binary files are read sequentially.
+        Dict
+            Ordered dictionary of variables provided in the spec file. Each dictionary field contains a
+            tuple with the information (data type, number of data points). Ordering is important as the
+            sage ii binary files are read sequentially.
         """
         spec = OrderedDict()
         spec['Tan_Alt'] = ('float32', 8)       # Subtangent Altitudes(km)
@@ -147,7 +150,7 @@ class SAGEIILoaderV700(object):
         return spec
 
     @staticmethod
-    def get_index_format() -> Dict[str, Tuple[str, int, int]]:
+    def get_index_format() -> Dict[str, Tuple[str, int]]:
         """
         index format taken from sg2_indexinfo.pro provided in the v7.00 download
 
@@ -155,6 +158,7 @@ class SAGEIILoaderV700(object):
 
         Returns
         -------
+        Dict
             an ordered dictionary of variables provided in the index file. Each dictionary
             field contains a tuple with the information (data type, length). Ordering is
             important as the sage ii binary files are read sequentially.
@@ -505,7 +509,7 @@ class SAGEIILoaderV700(object):
         Parameters
         ----------
         data
-            Data from the `load_data` function
+            Data from the ``load_data`` function
 
         Returns
         -------
@@ -688,7 +692,7 @@ class SAGEIILoaderV700(object):
                       'source_code': 'repository: https://github.com/LandonRieger/pySAGE.git, revision: '
                                      + pysagereader.__version__,
                       'source_data': 'https://eosweb.larc.nasa.gov/project/sage2/sage2_v7_table',
-                      'version': 'v1.0.0',
+                      'version': pysagereader.__version__,
                       'Conventions': 'CF-1.7'}
 
         if self.cf_names:
@@ -721,14 +725,15 @@ class SAGEIILoaderV700(object):
 
         return data
 
-    def convert_index_bit_flags(self, data: Dict) -> xr.Dataset:
+    @staticmethod
+    def convert_index_bit_flags(data: Dict) -> xr.Dataset:
         """
         Convert the int32 index flags to a dataset of distinct flags
 
         Parameters
         ----------
         data
-            Dictionary of input data as returned by `load_data`
+            Dictionary of input data as returned by ``load_data``
 
         Returns
         -------
@@ -761,11 +766,12 @@ class SAGEIILoaderV700(object):
         xr_data = []
         time = pd.to_timedelta(data['mjd'], 'D') + pd.Timestamp('1858-11-17')
         for key in f.keys():
-            xr_data.append(xr.DataArray(f[key], coords=[time], dims=['time'], name=self.get_name(key)))
+            xr_data.append(xr.DataArray(f[key], coords=[time], dims=['time'], name=key))
 
         return xr.merge(xr_data)
 
-    def convert_species_bit_flags(self, data: Dict) -> xr.Dataset:
+    @staticmethod
+    def convert_species_bit_flags(data: Dict) -> xr.Dataset:
         """
         Convert the int32 species flags to a dataset of distinct flags
 
@@ -817,10 +823,6 @@ class SAGEIILoaderV700(object):
         time = pd.to_timedelta(data['mjd'], 'D') + pd.Timestamp('1858-11-17')
         for key in f.keys():
             xr_data.append(xr.DataArray(f[key], coords=[time, data['Alt_Grid'][0:140]], dims=['time', 'Alt_Grid'],
-                                        name=self.get_name(key)))
+                                        name=key))
 
         return xr.merge(xr_data)
-
-    @staticmethod
-    def get_name(key):
-        return key
