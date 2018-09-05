@@ -501,6 +501,7 @@ class SAGEIILoaderV700(object):
                         data[key] = data[key][good]
         else:
             print('no data satisfies the criteria')
+            return None
 
         return data
 
