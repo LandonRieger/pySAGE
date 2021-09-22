@@ -9,7 +9,7 @@ with open(path.join(this_directory, 'README.rst'), encoding='utf-8') as f:
 setup(name='pysagereader',
       version=versioneer.get_version(),
       cmdclass=versioneer.get_cmdclass(),
-      description='SAGE binary file readers',
+      description='SAGE II v7.0 binary file reader',
       long_description=long_description,
       long_description_content_type='text/x-rst',
       author='USASK ARG',
@@ -17,5 +17,6 @@ setup(name='pysagereader',
       license='MIT',
       url='https://github.com/LandonRieger/pySAGE.git',
       packages=find_packages(),
-      install_requires=['numpy', 'pandas', 'xarray', 'click']
+      install_requires=['numpy', 'pandas', 'xarray', 'click'],
+      python_requires='>=3.6',
       )

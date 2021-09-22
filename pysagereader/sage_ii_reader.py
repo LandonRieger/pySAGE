@@ -171,7 +171,7 @@ class SAGEIILoaderV700(object):
         """
 
         info = OrderedDict()
-        
+
         info['num_prof'] = ('uint32', 1)       # Number of profiles in these files
         info['Met_Rev_Date'] = ('uint32', 1)   # LaRC Met Model Revision Date(YYYYMMDD)
         info['Driver_Rev'] = ('S1', 8)       # LaRC Driver Version(e.g. 6.20)
@@ -305,7 +305,7 @@ class SAGEIILoaderV700(object):
         for p in range(num_profiles):
             for key in file_format.keys():
                 nbytes = np.dtype(file_format[key][0]).itemsize * file_format[key][1]
-                data[p][key] = copy.copy(np.frombuffer(buffer[bidx:bidx+nbytes],
+                data[p][key] = copy.copy(np.frombuffer(buffer[bidx:bidx + nbytes],
                                                        dtype=file_format[key][0]))
                 bidx += nbytes
 
@@ -353,8 +353,8 @@ class SAGEIILoaderV700(object):
             if (ymd < 0) | (hms < 0):
                 date_str.append('1970-1-1 00:00:00')    # invalid sage ii date
             else:
-                hours = int(hms/10000)
-                mins = int((hms % 10000)/100)
+                hours = int(hms / 10000)
+                mins = int((hms % 10000) / 100)
                 secs = hms % 100
                 date_str.append(str(ymd)[0:4] + '-' + str(ymd)[4:6].zfill(2) + '-' +
                                 str(ymd)[6::].zfill(2) + ' ' + str(hours).zfill(2) + ':' +
@@ -400,7 +400,7 @@ class SAGEIILoaderV700(object):
         # create a list of unique year/month combinations between the start/end dates
         uniq = OrderedDict()
         for year in [(t.date().year, t.date().month) for t in
-                     pd.date_range(min_time, max_time+pd.Timedelta(27, 'D'), freq='27D')]:
+                     pd.date_range(min_time, max_time + pd.Timedelta(27, 'D'), freq='27D')]:
             uniq[year] = year
 
         # load in the data from the desired months
@@ -415,7 +415,7 @@ class SAGEIILoaderV700(object):
 
             indx_data = self.read_index_file(indx_file)
             numprof = indx_data['num_prof']
-            spec_data = self.read_spec_file(self.get_spec_filename(year,  month), numprof)
+            spec_data = self.read_spec_file(self.get_spec_filename(year, month), numprof)
 
             # get rid of the duplicate names for InfVec
             for sp in spec_data:
@@ -695,6 +695,7 @@ class SAGEIILoaderV700(object):
         for key in attrs.keys():
             data[key].attrs = attrs[key]
 
+        git_repo = 'https://github.com/LandonRieger/pySAGE.git'
         data.attrs = {'description': 'Retrieved vertical profiles of  aerosol extinction, ozone, '
                                      'nitrogen dioxide, water vapor, and meteorological profiles from SAGE II '
                                      'version 7.00',
@@ -703,8 +704,7 @@ class SAGEIILoaderV700(object):
                                                'Measurement Techniques, 6(12), 3539-3561.',
                       'title': 'SAGE II version 7.00',
                       'date_created': pd.Timestamp.now().strftime('%B %d %Y'),
-                      'source_code': 'repository: https://github.com/LandonRieger/pySAGE.git, revision: '
-                                     + pysagereader.__version__,
+                      'source_code': 'repository: ' + git_repo + ' revision: ' + pysagereader.__version__,
                       'source_data': 'https://eosweb.larc.nasa.gov/project/sage2/sage2_v7_table',
                       'version': pysagereader.__version__,
                       'Conventions': 'CF-1.7'}
@@ -840,4 +840,3 @@ class SAGEIILoaderV700(object):
                                         name=key))
 
         return xr.merge(xr_data)
-
