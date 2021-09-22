@@ -424,8 +424,9 @@ class SAGEIILoaderV700(object):
 
             for key in indx_data.keys():
                 # get rid of extraneous profiles in the index so index and spec are the same lengths
-                if hasattr(indx_data[key], '__len__'):
-                    indx_data[key] = np.delete(indx_data[key], np.arange(numprof, 930))
+                if hasattr(indx_data[key], '__len__') and type(indx_data[key]) is not str:
+                    if len(indx_data[key]) == 930:
+                        indx_data[key] = np.delete(indx_data[key], np.arange(numprof, 930))
 
                 # add the index values to the data set
                 if key in data.keys():
@@ -453,6 +454,8 @@ class SAGEIILoaderV700(object):
         for key in data.keys():
             if key == 'FillVal':
                 data[key] = float(data[key])  # make this a simple float rather than zero dimensional array
+            elif type(data[key][0]) is str:
+                data[key] = str(data[key][0])
             elif len(data[key][0].shape) > 0:
                 data[key] = np.concatenate(data[key], axis=0)
             else:
@@ -504,7 +507,9 @@ class SAGEIILoaderV700(object):
 
         if np.any(good):
             for key in data.keys():
-                if hasattr(data[key], '__len__'):
+                if type(data[key]) is str:
+                    pass
+                elif hasattr(data[key], '__len__'):
                     if data[key].shape[0] == len(good):
                         data[key] = data[key][good]
         else:
