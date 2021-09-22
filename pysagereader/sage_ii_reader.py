@@ -459,6 +459,8 @@ class SAGEIILoaderV700(object):
                 data[key] = np.asarray(data[key])
 
         data = self.subset_data(data, min_date, max_date, min_lat, max_lat, min_lon, max_lon)
+        if not data:
+            return None
 
         if self.output_format == 'xarray':
             data = self.convert_to_xarray(data)
@@ -507,6 +509,7 @@ class SAGEIILoaderV700(object):
                         data[key] = data[key][good]
         else:
             print('no data satisfies the criteria')
+            data = {}
 
         return data
 
@@ -832,3 +835,4 @@ class SAGEIILoaderV700(object):
                                         name=key))
 
         return xr.merge(xr_data)
+
