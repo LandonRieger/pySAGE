@@ -67,9 +67,15 @@ class SAGEIILoaderV700(object):
     ``date['time']`` is an pandas time series object containing the times of each scan
 
     """
-    def __init__(self, data_folder: str=None, output_format: str='xarray', species: List[str]=('aerosol', 'h2o', 'no2', 'ozone', 'background'),
-                 cf_names: bool=False, filter_aerosol: bool=False, filter_ozone: bool=False,
-                 enumerate_flags: bool=False, normalize_percent_error: bool=False, return_separate_flags: bool=False):
+    def __init__(self, data_folder: str = None,
+                 output_format: str = 'xarray',
+                 species: List[str] = ('aerosol', 'h2o', 'no2', 'ozone', 'background'),
+                 cf_names: bool = False,
+                 filter_aerosol: bool = False,
+                 filter_ozone: bool = False,
+                 enumerate_flags: bool = False,
+                 normalize_percent_error: bool = False,
+                 return_separate_flags: bool = False):
 
         if type(species) == str:
             species = [species]
@@ -362,8 +368,8 @@ class SAGEIILoaderV700(object):
         return data
 
     def load_data(self, min_date: str, max_date: str,
-                  min_lat: float=-90, max_lat: float=90,
-                  min_lon: float=-180, max_lon: float=360) -> Union[Dict, xr.Dataset]:
+                  min_lat: float = -90, max_lat: float = 90,
+                  min_lon: float = -180, max_lon: float = 360) -> Union[Dict, xr.Dataset]:
         """
         Load the SAGE II data for the specified dates and locations.
 

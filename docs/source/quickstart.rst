@@ -6,7 +6,7 @@ Quickstart
 
 Get the data
 ============
-The SAGE II data is not provided with the pysagereader package but can be obtained from `NASA ASDC. <https://eosweb.larc.nasa.gov/project/sage2/sage2_v7_table?qt-sage2_aerosol_tabs=1#qt-sage2_aerosol_tabs/>`_
+The SAGE II data is not provided with the pysagereader package but can be obtained from `NASA ASDC. <https://asdc.larc.nasa.gov/project/SAGE%20II/SAGE2_AEROSOL_O3_NO2_H2O_BINARY_V7.0>`_
 
 Install the package
 ===================

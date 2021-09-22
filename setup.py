@@ -17,5 +17,5 @@ setup(name='pysagereader',
       license='MIT',
       url='https://github.com/LandonRieger/pySAGE.git',
       packages=find_packages(),
-      install_requires=['xarray']
+      install_requires=['numpy', 'pandas', 'xarray', 'click']
       )

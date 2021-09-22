@@ -9,11 +9,12 @@ from pysagereader import SAGEIILoaderV700
 @click.option('-o', '--output_folder', default=None, help='output location of netcdf files')
 @click.option('-t', '--time_res', default='none', help='time resolution of output files, none, year, month or day accepted or'
                                                        'a frequency recognized by pandas, eg. 7D')
-@click.option('-s', '--start_time', default='1985')
-@click.option('-e', '--end_time', default='2006')
+@click.option('-s', '--start_time', default='1985', help='earliest record to include')
+@click.option('-e', '--end_time', default='2006', help='last record to include')
 def make_netcdf(input_folder, output_folder, time_res, start_time, end_time):
-
-    """Create netcdf files from the SAGE II binary files"""
+    """
+    Create netcdf files from the SAGE II binary files
+    """
     if input_folder is None:
         input_folder = os.getcwd()
     if output_folder is None:
